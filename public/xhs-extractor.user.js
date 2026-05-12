@@ -489,10 +489,13 @@
         for (const selector of commentSelectors) {
             try {
                 const elements = document.querySelectorAll(selector);
-                if (elements.length > 3) { // 至少要有几条评论才算找到
-                    commentElements = elements;
-                    console.log('[小红书数据提取器] 使用选择器:', selector, '找到', elements.length, '个元素');
-                    break;
+                if (elements.length > 0) {
+                    console.log('[小红书数据提取器] 尝试选择器:', selector, '找到', elements.length, '个元素');
+                    if (elements.length > 3) { // 至少要有几条评论才算找到
+                        commentElements = elements;
+                        console.log('[小红书数据提取器] ✓ 使用选择器:', selector);
+                        break;
+                    }
                 }
             } catch (e) {}
         }
@@ -501,18 +504,21 @@
         if (commentElements.length === 0) {
             // 查找评论区域
             const commentSection = document.querySelector('#comment-container, [class*="comment-list"], [class*="comments-list"], [class*="comment-section"]');
+            console.log('[小红书数据提取器] 评论区域元素:', commentSection);
             if (commentSection) {
                 // 查找直接子元素
                 const allDivs = commentSection.querySelectorAll(':scope > div');
+                console.log('[小红书数据提取器] 评论区子元素:', allDivs.length);
                 commentElements = Array.from(allDivs);
-                console.log('[小红书数据提取器] 使用评论区子元素，找到', commentElements.length, '个');
             }
         }
 
         // 备选：从整个页面找所有可能包含用户头像和评论内容的块
         if (commentElements.length === 0) {
+            console.log('[小红书数据提取器] 尝试从用户链接定位...');
             const allComments = [];
             const possibleComments = document.querySelectorAll('a[href*="user"]');
+            console.log('[小红书数据提取器] 找到用户链接:', possibleComments.length);
             possibleComments.forEach(a => {
                 const parent = a.closest('div[class]');
                 if (parent) {
@@ -522,13 +528,61 @@
                     }
                 }
             });
-            if (allComments.length > 3) {
+            console.log('[小红书数据提取器] 从用户链接定位到:', allComments.length);
+            if (allComments.length > 0) {
                 commentElements = allComments;
-                console.log('[小红书数据提取器] 使用用户链接定位，找到', commentElements.length, '个');
             }
         }
 
         console.log('[小红书数据提取器] 最终找到评论元素:', commentElements.length);
+
+        // 终极备选：直接查找包含"回复"文本的元素，其父元素可能是评论
+        if (commentElements.length === 0) {
+            console.log('[小红书数据提取器] 尝试终极备选方案...');
+            const replyLinks = document.querySelectorAll('div, span');
+            const commentContainers = new Set();
+            replyLinks.forEach(el => {
+                if (el.textContent.trim() === '回复') {
+                    // 向上查找3层父元素
+                    let parent = el;
+                    for (let i = 0; i < 3; i++) {
+                        parent = parent.parentElement;
+                        if (!parent) break;
+                    }
+                    if (parent) {
+                        commentContainers.add(parent);
+                    }
+                }
+            });
+            if (commentContainers.size > 0) {
+                commentElements = Array.from(commentContainers);
+                console.log('[小红书数据提取器] 从"回复"按钮找到:', commentElements.length);
+            }
+        }
+
+        // 如果还是没找到，输出页面结构帮助调试
+        if (commentElements.length === 0) {
+            console.log('[小红书数据提取器] ❌ 未找到评论元素，输出页面结构供分析...');
+            // 查找所有可能包含评论的容器
+            const allDivs = document.querySelectorAll('div');
+            let potentialContainers = [];
+            allDivs.forEach(div => {
+                if (div.children.length >= 3 && div.children.length <= 10) {
+                    const text = div.textContent;
+                    if (text.length > 20 && text.length < 1000) {
+                        const links = div.querySelectorAll('a');
+                        if (links.length >= 1 && links.length <= 3) {
+                            potentialContainers.push({
+                                element: div,
+                                text: text.substring(0, 100),
+                                childCount: div.children.length
+                            });
+                        }
+                    }
+                }
+            });
+            console.log('[小红书数据提取器] 可能的评论容器:', potentialContainers.slice(0, 5));
+        }
 
         commentElements.forEach(el => {
             try {
