@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
+import * as XLSX from 'xlsx'
+import AttentionAnalysis from '../components/Funnel/AttentionAnalysis'
+import type { Post } from '../types'
 
 interface PostContentAnalysis {
   estimatedReadTime: number
@@ -41,6 +44,12 @@ export default function PostAnalysisPage() {
     }
   } | null>(null)
 
+  // 文件上传相关状态
+  const [fileData, setFileData] = useState<Post[] | null>(null)
+  const [matchedPost, setMatchedPost] = useState<Post | null>(null)
+  const [isCheckingMatch, setIsCheckingMatch] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   // 从 URL 参数读取插件传递的数据
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -55,6 +64,118 @@ export default function PostAnalysisPage() {
       }
     }
   }, [location])
+
+  // 当提取的数据或文件数据变化时，尝试匹配帖子
+  useEffect(() => {
+    if (extractedData && fileData && fileData.length > 0) {
+      setIsCheckingMatch(true)
+      // 尝试匹配标题（完全匹配或包含关系）
+      const matched = fileData.find(post => {
+        const extractedTitle = extractedData.title.trim()
+        const postTitle = post.title.trim()
+        // 完全匹配或一方包含另一方
+        return extractedTitle === postTitle ||
+               extractedTitle.includes(postTitle) ||
+               postTitle.includes(extractedTitle)
+      })
+      setMatchedPost(matched || null)
+      setIsCheckingMatch(false)
+    }
+  }, [extractedData, fileData])
+
+  // 处理文件上传
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer)
+        const workbook = XLSX.read(data, { type: 'array' })
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][]
+
+        // 解析数据（假设第一行是表头）
+        if (jsonData.length < 2) {
+          alert('文件数据为空')
+          return
+        }
+
+        const headers = jsonData[0]
+        const posts: Post[] = []
+
+        // 查找需要的列索引
+        const titleIndex = headers.findIndex(h => h?.toString().includes('标题'))
+        const impressionsIndex = headers.findIndex(h => h?.toString().includes('曝光'))
+        const viewsIndex = headers.findIndex(h => h?.toString().includes('阅读') || h?.toString().includes('播放'))
+        const likesIndex = headers.findIndex(h => h?.toString().includes('点赞'))
+        const savesIndex = headers.findIndex(h => h?.toString().includes('收藏'))
+        const commentsIndex = headers.findIndex(h => h?.toString().includes('评论'))
+        const sharesIndex = headers.findIndex(h => h?.toString().includes('分享'))
+        const newFollowersIndex = headers.findIndex(h => h?.toString().includes('粉丝'))
+        const avgWatchTimeIndex = headers.findIndex(h => h?.toString().includes('观看时长'))
+
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = jsonData[i]
+          if (!row[titleIndex]) continue
+
+          const getNum = (idx: number) => {
+            if (idx === -1) return 0
+            const val = row[idx]
+            if (typeof val === 'number') return val
+            if (typeof val === 'string') {
+              const parsed = parseFloat(val.replace(/,/g, ''))
+              return isNaN(parsed) ? 0 : parsed
+            }
+            return 0
+          }
+
+          const impressions = getNum(impressionsIndex)
+          const views = getNum(viewsIndex)
+          const likes = getNum(likesIndex)
+          const saves = getNum(savesIndex)
+          const comments = getNum(commentsIndex)
+          const shares = getNum(sharesIndex)
+          const newFollowers = getNum(newFollowersIndex)
+          const avgWatchTime = getNum(avgWatchTimeIndex)
+
+          const post: Post = {
+            id: `post-${i}`,
+            title: row[titleIndex]?.toString() || '',
+            type: 'image',
+            publishDate: '',
+            topics: [],
+            impressions,
+            views,
+            likes,
+            saves,
+            comments,
+            shares,
+            newFollowers,
+            avgWatchTime: avgWatchTime > 0 ? avgWatchTime : undefined,
+            effectiveComments: 0,
+            ineffectiveComments: 0,
+            coverCTR: impressions > 0 ? views / impressions : 0,
+            likeRate: views > 0 ? likes / views : 0,
+            saveRate: views > 0 ? saves / views : 0,
+            commentRate: views > 0 ? comments / views : 0,
+            shareRate: views > 0 ? shares / views : 0,
+            interactionRate: views > 0 ? (likes + saves + comments + shares) / views : 0,
+            followConversionRate: views > 0 ? newFollowers / views : 0,
+            effectiveCommentRate: comments > 0 ? 0.6 : 0
+          }
+          posts.push(post)
+        }
+
+        setFileData(posts)
+      } catch (error) {
+        console.error('解析文件失败:', error)
+        alert('文件解析失败，请检查文件格式是否正确')
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
 
   const analyzeData = (data: ExtractedData) => {
     // 内容分析
@@ -491,12 +612,99 @@ export default function PostAnalysisPage() {
             </div>
           </div>
 
+          {/* 数据文件上传 - 用于匹配自己的帖子 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 观众注意力分析</h2>
+
+            {!fileData ? (
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                <h3 className="text-sm font-medium text-blue-900 mb-2">上传数据文件获取深度分析</h3>
+                <p className="text-xs text-blue-700 mb-4">
+                  上传您从小红书创作者中心导出的数据文件（.xlsx），系统将自动匹配帖子并展示观众注意力分析，包括官方的人均观看时长数据。
+                </p>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
+                >
+                  上传数据文件
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="bg-green-50 rounded-lg p-4 border border-green-100 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-green-900">✅ 数据文件已上传</p>
+                      <p className="text-xs text-green-700 mt-1">共 {fileData.length} 条帖子数据</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setFileData(null)
+                        setMatchedPost(null)
+                      }}
+                      className="text-xs text-green-700 hover:text-green-900 underline"
+                    >
+                      重新上传
+                    </button>
+                  </div>
+                </div>
+
+                {isCheckingMatch ? (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">正在匹配帖子数据...⏳</p>
+                  </div>
+                ) : matchedPost ? (
+                  <>
+                    <div className="bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg p-4 border border-green-200 mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🎉</span>
+                        <div>
+                          <p className="text-sm font-semibold text-green-800">已识别到这是您的帖子</p>
+                          <p className="text-xs text-green-700 mt-1">
+                            已从数据文件中匹配到该帖子的官方数据，正在展示观众注意力分析...
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <AttentionAnalysis post={matchedPost} isOwnPost={true} />
+                  </>
+                ) : (
+                  <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                    <div className="flex items-start gap-2">
+                      <span className="text-xl">⚠️</span>
+                      <div>
+                        <p className="text-sm font-semibold text-amber-800">未找到匹配的帖子</p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          上传的数据文件中没有找到与当前帖子标题匹配的记录。请检查：
+                        </p>
+                        <ul className="text-xs text-amber-700 mt-2 list-disc list-inside">
+                          <li>确保上传的是包含该帖子的数据文件</li>
+                          <li>帖子标题可能有差异，请核对后再试</li>
+                          <li>数据文件需要包含"标题"和"人均观看时长"列</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
           {/* 重新分析按钮 */}
           <div className="text-center">
             <button
               onClick={() => {
                 setResult(null)
                 setExtractedData(null)
+                setFileData(null)
+                setMatchedPost(null)
               }}
               className="px-6 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
             >

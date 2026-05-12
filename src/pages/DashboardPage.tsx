@@ -7,7 +7,6 @@ import PostRanking from '../components/Dashboard/PostRanking'
 import FunnelChart from '../components/Funnel/FunnelChart'
 import FunnelLayer from '../components/Funnel/FunnelLayer'
 import InteractionAnalysis from '../components/Funnel/InteractionAnalysis'
-import AttentionAnalysis from '../components/Funnel/AttentionAnalysis'
 import { Link } from 'react-router-dom'
 import { getBenchmark } from '../utils/benchmark'
 import type { Post } from '../types'
@@ -329,15 +328,6 @@ export default function DashboardPage() {
           <div className="mt-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">互动深度分析</h3>
             <InteractionAnalysis post={selectedPost} />
-          </div>
-
-          {/* 观众注意力分析 - 新增 */}
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">观众注意力分析</h3>
-            <AttentionAnalysis
-              post={selectedPost}
-              isOwnPost={posts.some(p => p.id === selectedPost.id)}
-            />
           </div>
 
           {/* 专业术语解释 */}
