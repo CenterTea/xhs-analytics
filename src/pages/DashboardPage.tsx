@@ -52,7 +52,11 @@ export default function DashboardPage() {
   const avgInteractions = Math.round(
     posts.reduce((s, p) => s + p.likes + p.saves + p.comments + p.shares, 0) / n
   )
-  const avgFollowers = Math.round(posts.reduce((s, p) => s + p.newFollowers, 0) / n)
+  const avgFollowersRaw = posts.reduce((s, p) => s + p.newFollowers, 0) / n
+  // 涨粉平均数小于1时保留1位小数，否则取整
+  const avgFollowers = avgFollowersRaw < 1 && avgFollowersRaw > 0
+    ? avgFollowersRaw.toFixed(1)
+    : Math.round(avgFollowersRaw).toString()
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -120,25 +124,67 @@ export default function DashboardPage() {
       <div className="bg-blue-50 rounded-xl p-4 mb-8 border border-blue-100">
         <div className="flex items-start gap-3">
           <span className="text-xl">📊</span>
-          <div>
-            <h3 className="font-semibold text-blue-900 mb-1">关于「同类账号」对比数据</h3>
-            <p className="text-sm text-blue-800 leading-relaxed">
-              当前对比的是「通用-新手期(0-1000粉)」账号的平均数据。
-              <br />
-              系统根据你的内容类型和粉丝量级自动匹配基准数据。基准数据综合了平台公开信息和行业经验值，仅供参考。
-            </p>
-            <details className="mt-2">
-              <summary className="text-sm text-blue-600 cursor-pointer hover:text-blue-800">
-                查看当前使用的基准数据详情
-              </summary>
-              <div className="mt-2 text-xs text-blue-700 bg-white/50 rounded p-2 space-y-1">
-                <p>平均封面点击率: {(benchmark.avgCoverCTR * 100).toFixed(1)}%</p>
-                <p>平均互动率: {(benchmark.avgInteractionRate * 100).toFixed(1)}%</p>
-                <p>平均点赞率: {(benchmark.avgLikeRate * 100).toFixed(1)}%</p>
-                <p>平均涨粉率: {(benchmark.avgFollowConversionRate * 100).toFixed(2)}%</p>
-                <p>平均观看时长: {benchmark.avgWatchTime}秒</p>
+          <div className="flex-1">
+            <h3 className="font-semibold text-blue-900 mb-2">关于「同类账号」对比数据</h3>
+
+            {/* 当前匹配的基准类型 */}
+            <div className="bg-white rounded-lg p-3 mb-3 border border-blue-100">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded">当前匹配</span>
+                <span className="text-sm font-medium text-gray-900">{benchmark.categoryName} · {benchmark.followerRange}粉丝</span>
               </div>
-            </details>
+              <p className="text-xs text-gray-600">
+                系统根据你当前的内容类型（{benchmark.categoryName}）和粉丝量级（{benchmark.followerRange}）匹配对应的基准数据。
+              </p>
+            </div>
+
+            {/* 数据来源说明 */}
+            <div className="space-y-2 text-sm text-blue-800">
+              <details className="group">
+                <summary className="cursor-pointer hover:text-blue-900 font-medium flex items-center gap-1">
+                  <span className="transition-transform group-open:rotate-90">▶</span>
+                  数据来源是什么？
+                </summary>
+                <div className="mt-2 pl-4 text-xs text-blue-700 space-y-1">
+                  <p>• 基于小红书官方发布的行业报告和公开数据</p>
+                  <p>• 参考第三方数据分析平台（如新红、千瓜）的行业均值</p>
+                  <p>• 结合创作者社群分享的经验值</p>
+                  <p>• 按粉丝量级分层：新手期(0-1000)、成长期(1000-1万)、稳定期(1万+)</p>
+                  <p className="text-amber-600 mt-1">⚠️ 注意：这些是行业参考值，不是实时的小红书官方数据</p>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="cursor-pointer hover:text-blue-900 font-medium flex items-center gap-1">
+                  <span className="transition-transform group-open:rotate-90">▶</span>
+                  如何定义「同类账号」？
+                </summary>
+                <div className="mt-2 pl-4 text-xs text-blue-700 space-y-1">
+                  <p><strong>内容类型：</strong>目前支持通用、美妆、穿搭、美食、旅行、生活/Vlog、知识/干货等分类</p>
+                  <p><strong>粉丝量级：</strong>不同粉丝阶段的数据标准差异很大，新号和万粉账号不能直接对比</p>
+                  <p><strong>建议：</strong>重点对比同粉丝量级的账号，不要拿新号去对比大V的数据</p>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="cursor-pointer hover:text-blue-900 font-medium flex items-center gap-1">
+                  <span className="transition-transform group-open:rotate-90">▶</span>
+                  查看当前使用的基准值
+                </summary>
+                <div className="mt-2 pl-4 text-xs text-blue-700 bg-white/70 rounded p-2 space-y-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <span>封面点击率: {(benchmark.avgCoverCTR * 100).toFixed(1)}%</span>
+                    <span>互动率: {(benchmark.avgInteractionRate * 100).toFixed(1)}%</span>
+                    <span>点赞率: {(benchmark.avgLikeRate * 100).toFixed(1)}%</span>
+                    <span>收藏率: {(benchmark.avgSaveRate * 100).toFixed(1)}%</span>
+                    <span>评论率: {(benchmark.avgCommentRate * 100).toFixed(1)}%</span>
+                    <span>涨粉率: {(benchmark.avgFollowConversionRate * 100).toFixed(2)}%</span>
+                    <span>分享率: {(benchmark.avgShareRate * 100).toFixed(1)}%</span>
+                    <span>观看时长: {benchmark.avgWatchTime}秒</span>
+                  </div>
+                </div>
+              </details>
+            </div>
           </div>
         </div>
       </div>
