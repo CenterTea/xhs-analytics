@@ -2,14 +2,15 @@ import { useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import VerticalityGauge from '../components/AccountAnalysis/VerticalityGauge'
 import FanStickiness from '../components/AccountAnalysis/FanStickiness'
+import FanAnalysisDetail from '../components/AccountAnalysis/FanAnalysisDetail'
 import MonetizationMatrix from '../components/AccountAnalysis/MonetizationMatrix'
 import DirectionAdvice from '../components/AccountAnalysis/DirectionAdvice'
 
 export default function AccountAnalysisPage() {
-  const { accountAnalysis, posts } = useData()
+  const { accountAnalysis, accountStats, posts } = useData()
   const navigate = useNavigate()
 
-  if (!posts.length) {
+  if (!posts.length || !accountStats) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
         <p className="text-gray-500 text-lg mb-4">还没有数据，请先上传</p>
@@ -31,6 +32,12 @@ export default function AccountAnalysisPage() {
         <div className="space-y-8">
           <VerticalityGauge data={accountAnalysis.contentVerticality} />
           <FanStickiness data={accountAnalysis.fanStickiness} />
+          {/* 粉丝深度分析 */}
+          <FanAnalysisDetail
+            posts={posts}
+            stats={accountStats}
+            fanStickiness={accountAnalysis.fanStickiness}
+          />
           <MonetizationMatrix data={accountAnalysis.monetizationPotential} />
           <DirectionAdvice
             direction={accountAnalysis.overallDirection}

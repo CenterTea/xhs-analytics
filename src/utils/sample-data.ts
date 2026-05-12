@@ -11,6 +11,7 @@ interface RawPost {
   views: number
   completionRate?: number
   avgWatchTime?: number
+  totalWatchTime?: number
   likes: number
   saves: number
   comments: number
@@ -18,6 +19,7 @@ interface RawPost {
   newFollowers: number
   effectiveComments: number
   ineffectiveComments: number
+  viewingPeriods?: number[]
   trafficSources?: {
     recommend: number
     search: number
@@ -37,6 +39,8 @@ const rawPosts: RawPost[] = [
     impressions: 28500,
     views: 5200,
     completionRate: 0.55,
+    avgWatchTime: 32,
+    totalWatchTime: 166400,
     likes: 416,
     saves: 312,
     comments: 130,
@@ -44,6 +48,7 @@ const rawPosts: RawPost[] = [
     newFollowers: 130,
     effectiveComments: 95,
     ineffectiveComments: 35,
+    viewingPeriods: [7, 6, 5, 3, 2, 2, 4, 8, 12, 18, 22, 28, 32, 30, 25, 20, 18, 22, 30, 35, 38, 28, 18, 10],
     trafficSources: {
       recommend: 3200,
       search: 1200,
@@ -61,7 +66,8 @@ const rawPosts: RawPost[] = [
     impressions: 45000,
     views: 9900,
     completionRate: 0.62,
-    avgWatchTime: 45,
+    avgWatchTime: 58,
+    totalWatchTime: 574200,
     likes: 891,
     saves: 693,
     comments: 396,
@@ -69,6 +75,7 @@ const rawPosts: RawPost[] = [
     newFollowers: 297,
     effectiveComments: 320,
     ineffectiveComments: 76,
+    viewingPeriods: [5, 4, 3, 2, 2, 3, 5, 9, 15, 22, 30, 38, 40, 35, 28, 22, 20, 25, 35, 42, 38, 25, 15, 8],
     trafficSources: {
       recommend: 6800,
       search: 1800,
@@ -86,6 +93,8 @@ const rawPosts: RawPost[] = [
     impressions: 8200,
     views: 650,
     completionRate: 0.38,
+    avgWatchTime: 15,
+    totalWatchTime: 9750,
     likes: 26,
     saves: 12,
     comments: 8,
@@ -93,6 +102,7 @@ const rawPosts: RawPost[] = [
     newFollowers: 4,
     effectiveComments: 5,
     ineffectiveComments: 3,
+    viewingPeriods: [10, 5, 3, 2, 2, 3, 5, 8, 10, 12, 15, 18, 20, 18, 15, 14, 16, 20, 25, 28, 22, 15, 12, 8],
   },
   {
     id: 'post-4',
@@ -103,6 +113,8 @@ const rawPosts: RawPost[] = [
     impressions: 32000,
     views: 5100,
     completionRate: 0.58,
+    avgWatchTime: 38,
+    totalWatchTime: 193800,
     likes: 357,
     saves: 408,
     comments: 153,
@@ -110,6 +122,7 @@ const rawPosts: RawPost[] = [
     newFollowers: 102,
     effectiveComments: 120,
     ineffectiveComments: 33,
+    viewingPeriods: [8, 6, 4, 3, 3, 5, 8, 12, 18, 25, 32, 35, 30, 22, 18, 16, 18, 22, 28, 32, 30, 20, 12, 8],
     trafficSources: {
       recommend: 3000,
       search: 1500,
@@ -127,6 +140,8 @@ const rawPosts: RawPost[] = [
     impressions: 68000,
     views: 10200,
     completionRate: 0.70,
+    avgWatchTime: 52,
+    totalWatchTime: 530400,
     likes: 612,
     saves: 918,
     comments: 408,
@@ -134,6 +149,7 @@ const rawPosts: RawPost[] = [
     newFollowers: 357,
     effectiveComments: 350,
     ineffectiveComments: 58,
+    viewingPeriods: [6, 5, 4, 3, 3, 5, 8, 12, 18, 28, 38, 42, 38, 30, 22, 18, 20, 28, 38, 42, 38, 28, 18, 10],
     trafficSources: {
       recommend: 5500,
       search: 3500,
@@ -152,6 +168,7 @@ const rawPosts: RawPost[] = [
     views: 11200,
     completionRate: 0.65,
     avgWatchTime: 78,
+    totalWatchTime: 873600,
     likes: 896,
     saves: 448,
     comments: 392,
@@ -159,6 +176,7 @@ const rawPosts: RawPost[] = [
     newFollowers: 314,
     effectiveComments: 340,
     ineffectiveComments: 52,
+    viewingPeriods: [4, 3, 2, 2, 2, 4, 6, 10, 16, 25, 35, 42, 45, 38, 30, 22, 18, 25, 32, 40, 45, 35, 20, 10],
     trafficSources: {
       recommend: 7200,
       search: 2200,
@@ -176,6 +194,8 @@ const rawPosts: RawPost[] = [
     impressions: 15000,
     views: 1800,
     completionRate: 0.40,
+    avgWatchTime: 20,
+    totalWatchTime: 36000,
     likes: 90,
     saves: 36,
     comments: 27,
@@ -183,6 +203,7 @@ const rawPosts: RawPost[] = [
     newFollowers: 18,
     effectiveComments: 18,
     ineffectiveComments: 9,
+    viewingPeriods: [9, 6, 4, 3, 3, 5, 7, 10, 12, 15, 18, 22, 25, 22, 18, 15, 14, 18, 24, 30, 28, 20, 12, 8],
   },
   {
     id: 'post-8',
@@ -193,6 +214,8 @@ const rawPosts: RawPost[] = [
     impressions: 12000,
     views: 1200,
     completionRate: 0.42,
+    avgWatchTime: 18,
+    totalWatchTime: 21600,
     likes: 60,
     saves: 36,
     comments: 18,
@@ -200,12 +223,13 @@ const rawPosts: RawPost[] = [
     newFollowers: 12,
     effectiveComments: 12,
     ineffectiveComments: 6,
+    viewingPeriods: [10, 7, 5, 3, 3, 5, 8, 12, 15, 18, 20, 22, 25, 20, 16, 14, 15, 20, 25, 28, 25, 18, 12, 8],
   },
 ]
 
 export function loadSampleData(): { posts: Post[] } {
   const posts = rawPosts.map((p) => {
-    const post: Partial<import('../types').Post> = {
+    const post: Partial<Post> = {
       ...p,
       coverCTR: 0,
       likeRate: 0,

@@ -2,7 +2,8 @@ import type { Benchmark } from '../types'
 
 /**
  * 同类目基准数据
- * 这些数据基于公开信息和行业经验值，后续可更新为更精确的数据
+ * 数据基于公开信息和行业经验值，后续可更新为更精确的数据
+ * avgWatchTime 单位为秒
  */
 const benchmarks: Benchmark[] = [
   {
@@ -10,6 +11,7 @@ const benchmarks: Benchmark[] = [
     categoryName: '通用',
     followerRange: '0-1000',
     avgCoverCTR: 0.08,
+    avgWatchTime: 25,
     avgCompletionRate: 0.35,
     avgLikeRate: 0.04,
     avgSaveRate: 0.02,
@@ -24,6 +26,7 @@ const benchmarks: Benchmark[] = [
     categoryName: '通用',
     followerRange: '1000-1w',
     avgCoverCTR: 0.10,
+    avgWatchTime: 30,
     avgCompletionRate: 0.40,
     avgLikeRate: 0.05,
     avgSaveRate: 0.025,
@@ -38,6 +41,7 @@ const benchmarks: Benchmark[] = [
     categoryName: '美妆护肤',
     followerRange: '0-1000',
     avgCoverCTR: 0.09,
+    avgWatchTime: 28,
     avgCompletionRate: 0.38,
     avgLikeRate: 0.045,
     avgSaveRate: 0.03,
@@ -52,6 +56,7 @@ const benchmarks: Benchmark[] = [
     categoryName: '穿搭',
     followerRange: '0-1000',
     avgCoverCTR: 0.085,
+    avgWatchTime: 22,
     avgCompletionRate: 0.36,
     avgLikeRate: 0.04,
     avgSaveRate: 0.025,
@@ -66,6 +71,7 @@ const benchmarks: Benchmark[] = [
     categoryName: '美食',
     followerRange: '0-1000',
     avgCoverCTR: 0.095,
+    avgWatchTime: 30,
     avgCompletionRate: 0.42,
     avgLikeRate: 0.05,
     avgSaveRate: 0.035,
@@ -80,6 +86,7 @@ const benchmarks: Benchmark[] = [
     categoryName: '旅行',
     followerRange: '0-1000',
     avgCoverCTR: 0.09,
+    avgWatchTime: 35,
     avgCompletionRate: 0.40,
     avgLikeRate: 0.045,
     avgSaveRate: 0.04,
@@ -94,6 +101,7 @@ const benchmarks: Benchmark[] = [
     categoryName: '生活/Vlog',
     followerRange: '0-1000',
     avgCoverCTR: 0.075,
+    avgWatchTime: 20,
     avgCompletionRate: 0.33,
     avgLikeRate: 0.038,
     avgSaveRate: 0.018,
@@ -108,6 +116,7 @@ const benchmarks: Benchmark[] = [
     categoryName: '知识/干货',
     followerRange: '0-1000',
     avgCoverCTR: 0.07,
+    avgWatchTime: 45,
     avgCompletionRate: 0.45,
     avgLikeRate: 0.042,
     avgSaveRate: 0.05,

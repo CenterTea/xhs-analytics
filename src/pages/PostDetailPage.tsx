@@ -6,6 +6,8 @@ import MetricComparison from '../components/Funnel/MetricComparison'
 import TrafficSource from '../components/Funnel/TrafficSource'
 import CommentQuality from '../components/Interaction/CommentQuality'
 import ShareAnalysis from '../components/Interaction/ShareAnalysis'
+import ViewingTimeAnalysis from '../components/Interaction/ViewingTimeAnalysis'
+import ViewingPeriodsChart from '../components/Interaction/ViewingPeriodsChart'
 import AttributionCard from '../components/Attribution/AttributionCard'
 import ReferencePosts from '../components/Attribution/ReferencePosts'
 import DiagnosisReport from '../components/Diagnosis/DiagnosisReport'
@@ -122,6 +124,24 @@ export default function PostDetailPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">绝对 + 相对指标对比</h2>
         <MetricComparison post={post} />
+      </div>
+
+      {/* 观看时长与完播率分析 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">观看时长 & 评论区关联</h2>
+          <ViewingTimeAnalysis
+            avgWatchTime={post.avgWatchTime}
+            totalWatchTime={post.totalWatchTime}
+            completionRate={post.completionRate}
+            commentRate={post.commentRate}
+            followConversionRate={post.followConversionRate}
+          />
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">观看时段分布</h2>
+          <ViewingPeriodsChart viewingPeriods={post.viewingPeriods} />
+        </div>
       </div>
 
       {/* 流量来源 */}

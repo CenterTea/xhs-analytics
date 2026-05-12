@@ -9,7 +9,8 @@ export interface Post {
 
   impressions: number
   views: number
-  avgWatchTime?: number
+  avgWatchTime?: number       // 平均观看时长（秒）—— 图文为停留时长，视频为播放时长
+  totalWatchTime?: number     // 总观看时长（秒）
   completionRate?: number
   likes: number
   saves: number
@@ -19,6 +20,9 @@ export interface Post {
 
   effectiveComments: number
   ineffectiveComments: number
+
+  // 观看时段分布（小时，0-23）
+  viewingPeriods?: number[]
 
   trafficSources?: {
     recommend: number
@@ -65,6 +69,7 @@ export interface Benchmark {
   categoryName: string
   followerRange: string
   avgCoverCTR: number
+  avgWatchTime: number        // 平均观看时长（秒）
   avgCompletionRate: number
   avgLikeRate: number
   avgSaveRate: number
