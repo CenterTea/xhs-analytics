@@ -33,11 +33,14 @@
     `;
     button.onmouseover = () => button.style.transform = 'scale(1.05)';
     button.onmouseout = () => button.style.transform = 'scale(1)';
-    button.onclick = extractData;
+    button.onclick = () => extractData().catch(console.error);
     document.body.appendChild(button);
 
-    function extractData() {
+    async function extractData() {
         try {
+            // 显示开始提取提示
+            showToast('🚀 开始提取数据，正在滚动加载评论...');
+
             // 提取帖子数据
             const data = {
                 title: extractTitle(),
@@ -52,8 +55,8 @@
                 extractTime: new Date().toISOString()
             };
 
-            // 提取评论（需要滚动加载更多）
-            const comments = extractComments();
+            // 提取评论（自动滚动加载，最多500条）
+            const comments = await extractComments();
             data.commentList = comments;
 
             // 复制到剪贴板
@@ -152,25 +155,68 @@
         return '';
     }
 
-    function extractComments() {
+    async function extractComments() {
         const comments = [];
-        const commentElements = document.querySelectorAll('.comment-item, [class*="comment"], .reply-item');
+        const seenContents = new Set(); // 去重
 
-        commentElements.forEach(el => {
-            const content = el.querySelector('.content, .text, [class*="content"]');
-            const author = el.querySelector('.username, .name, [class*="user"]');
-            const likes = el.querySelector('.like-count, [class*="like"]');
+        // 自动滚动加载更多评论，最多加载500条
+        const maxComments = 500;
+        const scrollAttempts = 20; // 最多滚动20次
 
-            if (content && content.textContent.trim()) {
-                comments.push({
-                    author: author ? author.textContent.trim() : '',
-                    content: content.textContent.trim(),
-                    likes: likes ? parseInt(likes.textContent) || 0 : 0
-                });
+        for (let i = 0; i < scrollAttempts && comments.length < maxComments; i++) {
+            // 获取当前可见的评论
+            const commentElements = document.querySelectorAll('.comment-item, [class*="comment"], .reply-item, [class*="note-comment"]');
+
+            commentElements.forEach(el => {
+                const contentEl = el.querySelector('.content, .text, [class*="content"], [class*="text"]');
+                const authorEl = el.querySelector('.username, .name, [class*="user"], [class*="nickname"]');
+                const likesEl = el.querySelector('.like-count, [class*="like"], [class*="liked"]');
+
+                if (contentEl) {
+                    const content = contentEl.textContent.trim();
+                    const author = authorEl ? authorEl.textContent.trim() : '匿名';
+
+                    // 去重检查
+                    const uniqueKey = `${author}:${content.slice(0, 50)}`;
+                    if (content && !seenContents.has(uniqueKey)) {
+                        seenContents.add(uniqueKey);
+
+                        // 提取点赞数
+                        let likes = 0;
+                        if (likesEl) {
+                            const likeText = likesEl.textContent;
+                            const likeMatch = likeText.match(/(\d+)/);
+                            if (likeMatch) likes = parseInt(likeMatch[1]);
+                        }
+
+                        comments.push({
+                            author,
+                            content,
+                            likes
+                        });
+                    }
+                }
+            });
+
+            // 如果已经获取足够，停止滚动
+            if (comments.length >= maxComments) break;
+
+            // 滚动到页面底部加载更多评论
+            const commentSection = document.querySelector('.comments-section, [class*="comment-list"], [class*="note-comment"]');
+            if (commentSection) {
+                commentSection.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            } else {
+                window.scrollTo(0, document.body.scrollHeight);
             }
-        });
 
-        return comments.slice(0, 50); // 最多取50条
+            // 等待加载
+            await new Promise(resolve => setTimeout(resolve, 800));
+        }
+
+        // 按点赞数排序，取前500条
+        return comments
+            .sort((a, b) => b.likes - a.likes)
+            .slice(0, maxComments);
     }
 
     function showToast(message, isError = false) {

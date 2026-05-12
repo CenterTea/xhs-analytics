@@ -455,12 +455,19 @@ export default function PostAnalysisPage() {
               <span className="font-medium">讨论焦点：</span>{result.comments.mainTopic}
             </p>
 
-            {/* 显示部分评论 */}
+            {/* 显示评论 */}
             {extractedData?.commentList && extractedData.commentList.length > 0 && (
               <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">热门评论</h4>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {extractedData.commentList.slice(0, 5).map((comment, idx) => (
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium text-gray-700">
+                    热门评论 ({extractedData.commentList.length}条)
+                  </h4>
+                  <span className="text-xs text-gray-400">
+                    按点赞数排序，显示前{Math.min(10, extractedData.commentList.length)}条
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {extractedData.commentList.slice(0, 10).map((comment, idx) => (
                     <div key={idx} className="bg-gray-50 rounded p-2 text-sm">
                       <span className="font-medium text-gray-700">{comment.author}:</span>
                       <span className="text-gray-600 ml-1">{comment.content}</span>
@@ -470,6 +477,11 @@ export default function PostAnalysisPage() {
                     </div>
                   ))}
                 </div>
+                {extractedData.commentList.length > 10 && (
+                  <p className="text-xs text-center text-gray-400 mt-2">
+                    还有 {extractedData.commentList.length - 10} 条评论未显示
+                  </p>
+                )}
               </div>
             )}
           </div>
