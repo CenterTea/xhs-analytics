@@ -53,8 +53,12 @@ export async function parseFile(file: File): Promise<Post[]> {
     )
   }
 
+  // 检测是否为千帆导出格式，如果是则添加特殊处理
+  const columnNames = rawData.length > 0 ? Object.keys(rawData[0]) : []
+  const isQianfan = isQianfanFormat(columnNames)
+
   const posts = rawData.map((row, index) => {
-    const post = parseRow(row, index)
+    const post = parseRow(row, index, isQianfan ? columnNames : undefined)
     return calculatePostRates(post)
   })
 
@@ -84,21 +88,56 @@ export async function parseFile(file: File): Promise<Post[]> {
   return posts
 }
 
+// 检测是否为千帆后台导出的格式（列名包含 "最多导出排序前后"）
+function isQianfanFormat(columnNames: string[]): boolean {
+  return columnNames.some(col => col.includes('最多导出排序前后'))
+}
+
+// 根据列索引获取字段名（用于千帆导出格式）
+function getFieldByQianfanIndex(columnNames: string[], targetField: string): string | undefined {
+  const prefix = columnNames.find(col => col.includes('最多导出排序前后'))
+  if (!prefix) return undefined
+
+  // 提取前缀部分（如 "最多导出排序前后1000条笔记"）
+  const basePrefix = prefix.replace(/_\d+$/, '')
+
+  const indexMap: Record<string, number> = {
+    'title': 1,
+    'publishDate': 2,
+    'type': 3,
+    'impressions': 4,
+    'views': 5,
+    'coverCTR': 6,
+    'likes': 7,
+    'comments': 8,
+    'saves': 9,
+    'newFollowers': 10,
+    'shares': 11,
+    'avgWatchTime': 12,
+  }
+
+  const index = indexMap[targetField]
+  if (!index) return undefined
+
+  const targetColumn = `${basePrefix}_${index}`
+  return columnNames.includes(targetColumn) ? targetColumn : undefined
+}
+
 // 字段映射：兼容官方导出 + xhs-creator-export 等多种格式
 const fieldMapping: Record<string, string[]> = {
   id: ['笔记ID', 'id', 'post_id', 'article_id', '笔记id', '编号', '序号'],
   title: ['标题', 'title', '笔记标题', '内容标题', '笔记'],
-  type: ['笔记类型', '类型', 'type', '内容类型', 'media_type', '形式'],
-  publishDate: ['发布时间', 'publishDate', '发布时间', 'publish_time', '发布日期', 'date', '时间'],
+  type: ['笔记类型', '类型', 'type', '内容类型', 'media_type', '形式', '体裁'],
+  publishDate: ['发布时间', 'publishDate', '发布时间', 'publish_time', '发布日期', 'date', '时间', '首次发布时间'],
   impressions: ['曝光量', 'impressions', '曝光', '展现量', '展示量', '曝光数'],
   views: ['阅读数', '阅读量', 'views', '阅读', '浏览', '浏览量', '播放量', '播放', 'read_count', 'view_count'],
-  avgWatchTime: ['平均观看时长', 'avgWatchTime', '平均停留时长', '观看时长', '平均观看时长（秒）', 'avg_watch_time'],
+  avgWatchTime: ['平均观看时长', 'avgWatchTime', '平均停留时长', '观看时长', '平均观看时长（秒）', 'avg_watch_time', '人均观看时长'],
   completionRate: ['完播率', 'completionRate', '完播率', '阅读完成率', '完成率'],
   likes: ['点赞数', 'likes', '点赞', '点赞量', 'like_count', '获赞'],
   saves: ['收藏数', 'saves', '收藏', '收藏量', 'bookmarks', 'save_count', '收藏次数'],
-  comments: ['评论数', 'comments', '评论', '评论量', 'comment_count', '弹幕数'],
+  comments: ['评论数', 'comments', '评论', '评论量', 'comment_count', '弹幕数', '弹幕'],
   shares: ['分享数', '转发数', 'shares', '转发', '分享', '分享量', 'share_count', '转发量'],
-  newFollowers: ['涨粉数', 'newFollowers', '新增粉丝', '涨粉', 'follows', '新增关注'],
+  newFollowers: ['涨粉数', 'newFollowers', '新增粉丝', '涨粉', 'follows', '新增关注', '涨粉'],
   effectiveComments: ['有效评论数', 'effectiveComments', '有效评论'],
   ineffectiveComments: ['无效评论数', 'ineffectiveComments', '无效评论'],
   topics: ['话题', 'topics', '标签', 'tags', '话题标签', '关键词'],
@@ -109,18 +148,31 @@ const fieldMapping: Record<string, string[]> = {
   other: ['其他流量', 'other', '其他来源', '其它'],
 }
 
-function getField(row: Record<string, unknown>, keys: string[]): unknown {
+function getField(row: Record<string, unknown>, keys: string[], columnNames?: string[]): unknown {
+  // 首先尝试直接匹配
   for (const key of keys) {
     if (key in row && row[key] !== undefined && row[key] !== null && row[key] !== '') {
       return row[key]
     }
   }
+  // 如果提供了列名且是千帆格式，尝试按索引匹配
+  if (columnNames && isQianfanFormat(columnNames)) {
+    // 找到对应的字段名
+    const fieldName = Object.keys(fieldMapping).find(f => fieldMapping[f] === keys) ||
+                      Object.entries(fieldMapping).find(([_, v]) => v.some(k => keys.includes(k)))?.[0]
+    if (fieldName) {
+      const qianfanCol = getFieldByQianfanIndex(columnNames, fieldName)
+      if (qianfanCol && qianfanCol in row && row[qianfanCol] !== undefined && row[qianfanCol] !== null && row[qianfanCol] !== '') {
+        return row[qianfanCol]
+      }
+    }
+  }
   return undefined
 }
 
-function parseRow(row: Record<string, unknown>, index: number): Partial<Post> {
+function parseRow(row: Record<string, unknown>, index: number, columnNames?: string[]): Partial<Post> {
   const get = (field: keyof typeof fieldMapping): unknown =>
-    getField(row, fieldMapping[field])
+    getField(row, fieldMapping[field], columnNames)
 
   const typeStr = String(get('type') ?? 'image')
   const postType: 'image' | 'video' =
