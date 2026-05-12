@@ -1,10 +1,14 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import MetricCard from '../components/Dashboard/MetricCard'
 import TrendChart from '../components/Dashboard/TrendChart'
 import PostRanking from '../components/Dashboard/PostRanking'
+import FunnelChart from '../components/Funnel/FunnelChart'
+import FunnelLayer from '../components/Funnel/FunnelLayer'
 import { Link } from 'react-router-dom'
 import { getBenchmark } from '../utils/benchmark'
+import type { Post } from '../types'
 
 function pctRank(yours: number, benchmark: number): string {
   if (benchmark <= 0) return ''
@@ -28,10 +32,11 @@ function calculateTotalPercentile(totalValue: number, postCount: number, benchma
 }
 
 export default function DashboardPage() {
-  const { posts, accountStats } = useData()
+  const { posts, accountStats, getDiagnosis } = useData()
   const navigate = useNavigate()
   const benchmark = getBenchmark('default', 500)
   const n = posts.length
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
 
   if (!posts.length) {
     return (
@@ -46,6 +51,8 @@ export default function DashboardPage() {
       </div>
     )
   }
+
+  const diagnosis = selectedPost ? getDiagnosis?.(selectedPost) : null
 
   const avgImpressions = Math.round(posts.reduce((s, p) => s + p.impressions, 0) / n)
   const avgViews = Math.round(posts.reduce((s, p) => s + p.views, 0) / n)
@@ -196,7 +203,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 帖子排行榜——显示全部 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -209,7 +216,8 @@ export default function DashboardPage() {
           <PostRanking
             posts={posts}
             sortKey="interactionRate"
-            onPostClick={(post) => navigate(`/post/${post.id}`)}
+            onPostClick={(post) => setSelectedPost(selectedPost?.id === post.id ? null : post)}
+            selectedId={selectedPost?.id}
           />
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -224,10 +232,76 @@ export default function DashboardPage() {
           <PostRanking
             posts={posts}
             sortKey="followConversionRate"
-            onPostClick={(post) => navigate(`/post/${post.id}`)}
+            onPostClick={(post) => setSelectedPost(selectedPost?.id === post.id ? null : post)}
+            selectedId={selectedPost?.id}
           />
         </div>
       </div>
+
+      {/* 选中的帖子详情 - 在当前页面展开 */}
+      {selectedPost && (
+        <div className="bg-white rounded-xl border-2 border-red-200 p-6 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                {selectedPost.type === 'video' ? '视频' : '图文'}
+              </span>
+              <h2 className="text-xl font-bold text-gray-900 mt-2">{selectedPost.title}</h2>
+              <p className="text-sm text-gray-400">{selectedPost.publishDate} 发布</p>
+            </div>
+            <button
+              onClick={() => setSelectedPost(null)}
+              className="text-gray-400 hover:text-gray-600 px-3 py-1 rounded-lg hover:bg-gray-100"
+            >
+              ✕ 收起
+            </button>
+          </div>
+
+          {/* 漏斗图 */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">转化漏斗</h3>
+            <FunnelChart post={selectedPost} />
+          </div>
+
+          {/* 漏斗逐层分析 */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">漏斗逐层分析</h3>
+
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 text-sm text-blue-800 mb-4">
+              <p className="font-medium text-blue-900 mb-1">💡 关于数据对比</p>
+              <p>对比的是「通用-新手期(0-1000粉)」账号的平均数据。绝对数值差异很大，重点看相对指标。</p>
+            </div>
+
+            <FunnelLayer
+              label="封面点击"
+              absoluteValue={selectedPost.views}
+              relativeValue={selectedPost.coverCTR}
+              relativeLabel="封面点击率"
+              benchmarkValue={benchmark.avgCoverCTR}
+              diagnosis={diagnosis?.funnelDiagnosis[0]}
+              layerType="ctr"
+            />
+            <FunnelLayer
+              label="互动转化"
+              absoluteValue={selectedPost.likes + selectedPost.saves + selectedPost.comments + selectedPost.shares}
+              relativeValue={selectedPost.interactionRate}
+              relativeLabel="互动率"
+              benchmarkValue={benchmark.avgInteractionRate}
+              diagnosis={diagnosis?.funnelDiagnosis[1]}
+              layerType="interaction"
+            />
+            <FunnelLayer
+              label="涨粉转化"
+              absoluteValue={selectedPost.newFollowers}
+              relativeValue={selectedPost.followConversionRate}
+              relativeLabel="涨粉转化率"
+              benchmarkValue={benchmark.avgFollowConversionRate}
+              diagnosis={diagnosis?.funnelDiagnosis[2]}
+              layerType="conversion"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -4,12 +4,14 @@ interface PostRankingProps {
   posts: Post[]
   sortKey: 'interactionRate' | 'followConversionRate' | 'likes'
   onPostClick: (post: Post) => void
+  selectedId?: string
 }
 
 export default function PostRanking({
   posts,
   sortKey,
   onPostClick,
+  selectedId,
 }: PostRankingProps) {
   const sorted = [...posts].sort((a, b) => {
     if (sortKey === 'likes') return b.likes - a.likes
@@ -31,11 +33,17 @@ export default function PostRanking({
             ? `${(post.interactionRate * 100).toFixed(1)}%`
             : `${(post.followConversionRate * 100).toFixed(2)}%`
 
+        const isSelected = selectedId === post.id
+
         return (
           <button
             key={post.id}
             onClick={() => onPostClick(post)}
-            className="w-full text-left flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+            className={`w-full text-left flex items-center gap-2 p-2 rounded-lg transition-colors ${
+              isSelected
+                ? 'bg-red-50 border border-red-200'
+                : 'hover:bg-gray-50'
+            }`}
           >
             <span
               className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${

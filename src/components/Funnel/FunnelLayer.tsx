@@ -56,10 +56,9 @@ export default function FunnelLayer({
   const yourPct = (relativeValue * 100).toFixed(2)
   const benchmarkPct = (benchmarkValue * 100).toFixed(2)
 
-  // 双条对比：用户 vs 均值
-  const maxValue = Math.max(relativeValue, benchmarkValue) * 1.2
-  const yourBarW = maxValue > 0 ? (relativeValue / maxValue) * 100 : 0
-  const benchmarkBarW = maxValue > 0 ? (benchmarkValue / maxValue) * 100 : 0
+  // 进度条以100%为基准，数值是多少就填充多少
+  const yourBarW = relativeValue * 100
+  const benchmarkBarW = benchmarkValue * 100
 
   const explanation = layerExplanations[layerType]
 
