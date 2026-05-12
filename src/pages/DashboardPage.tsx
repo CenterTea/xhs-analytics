@@ -301,6 +301,29 @@ export default function DashboardPage() {
             />
           </div>
 
+          {/* 漏斗各层含义 */}
+          <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">📖 漏斗各层含义</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+              <div className="flex items-start gap-1.5">
+                <span className="w-2 h-2 rounded-full mt-0.5 bg-[#C4A882]" />
+                <span><span className="font-medium">曝光量:</span> 你的内容被推荐系统推送给多少人</span>
+              </div>
+              <div className="flex items-start gap-1.5">
+                <span className="w-2 h-2 rounded-full mt-0.5 bg-[#B8A9C9]" />
+                <span><span className="font-medium">阅读量:</span> 看到你的封面后，有多少人被吸引点击进来</span>
+              </div>
+              <div className="flex items-start gap-1.5">
+                <span className="w-2 h-2 rounded-full mt-0.5 bg-[#9BA4B5]" />
+                <span><span className="font-medium">互动量:</span> 看完内容后，有多少人愿意点赞/收藏/评论/分享</span>
+              </div>
+              <div className="flex items-start gap-1.5">
+                <span className="w-2 h-2 rounded-full mt-0.5 bg-[#A8A4A0]" />
+                <span><span className="font-medium">涨粉:</span> 觉得内容有价值，关注你成为粉丝的比例</span>
+              </div>
+            </div>
+          </div>
+
           {/* 专业术语解释 */}
           <div className="mt-6 bg-amber-50 rounded-lg p-4 border border-amber-100">
             <h4 className="text-sm font-semibold text-amber-900 mb-2">💡 这些术语是什么意思？</h4>

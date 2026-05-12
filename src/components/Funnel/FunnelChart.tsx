@@ -61,21 +61,6 @@ export default function FunnelChart({ post }: FunnelChartProps) {
 
   return (
     <div className="space-y-4">
-      {/* 术语解释 */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-4">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">📖 漏斗各层含义</h4>
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-          {steps.map((step) => (
-            <div key={step.label} className="flex items-start gap-1.5">
-              <span className={`w-2 h-2 rounded-full mt-0.5 ${step.color}`} />
-              <span>
-                <span className="font-medium">{step.label}:</span> {step.explanation}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* 漏斗图 - 以曝光量为100%基准 */}
       <div className="space-y-3">
         {steps.map((step, i) => {
