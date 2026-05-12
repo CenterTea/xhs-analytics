@@ -235,6 +235,13 @@ export default function PostAnalysisPage() {
         </p>
       </div>
 
+      {/* 功能说明 */}
+      <div className="bg-blue-50 rounded-lg border border-blue-200 p-3 mb-6">
+        <p className="text-sm text-blue-700 text-center font-medium">
+          可以分析自己和她人的帖子数据
+        </p>
+      </div>
+
       {/* 使用说明 */}
       <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 mb-6">
         <div className="flex items-start gap-3">
@@ -312,7 +319,6 @@ export default function PostAnalysisPage() {
               <p className="text-sm text-green-800 font-medium">{extractedData.title}</p>
               <div className="flex gap-4 mt-2 text-xs text-green-700">
                 <span>👤 {extractedData.author || '未知作者'}</span>
-                <span>👍 {extractedData.likes || 0}</span>
                 <span>⭐ {extractedData.collects || 0}</span>
                 <span>💬 {extractedData.comments || 0}</span>
               </div>
@@ -354,11 +360,7 @@ export default function PostAnalysisPage() {
           {/* 基础数据 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 帖子数据</h2>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">{extractedData?.likes || 0}</p>
-                <p className="text-xs text-gray-500">点赞</p>
-              </div>
+            <div className="grid grid-cols-3 gap-4">
               <div className="bg-gray-50 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-gray-900">{extractedData?.collects || 0}</p>
                 <p className="text-xs text-gray-500">收藏</p>
