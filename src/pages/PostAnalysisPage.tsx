@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 
 interface PostContentAnalysis {
   estimatedReadTime: number
@@ -14,9 +14,26 @@ interface CommentWordCloud {
   mainTopic: string
 }
 
+interface ExtractedData {
+  title: string
+  content: string
+  author: string
+  likes: number
+  collects: number
+  comments: number
+  shares: number
+  postTime: string
+  url: string
+  commentList?: { author: string; content: string; likes: number }[]
+}
+
 export default function PostAnalysisPage() {
+  const location = useLocation()
+  const [inputMode, setInputMode] = useState<'url' | 'html'>('url')
   const [postUrl, setPostUrl] = useState('')
+  const [htmlContent, setHtmlContent] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
+  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null)
   const [result, setResult] = useState<{
     content: PostContentAnalysis
     comments: CommentWordCloud
@@ -27,41 +44,180 @@ export default function PostAnalysisPage() {
     }
   } | null>(null)
 
-  const handleAnalyze = () => {
-    if (!postUrl.trim()) return
+  // 从 URL 参数读取插件传递的数据
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const dataParam = params.get('data')
+    if (dataParam) {
+      try {
+        const data = JSON.parse(decodeURIComponent(dataParam))
+        setExtractedData(data)
+        analyzeData(data)
+      } catch (e) {
+        console.error('解析数据失败:', e)
+      }
+    }
+  }, [location])
+
+  const analyzeData = (data: ExtractedData) => {
     setAnalyzing(true)
-    // 模拟分析过程
-    setTimeout(() => {
-      setResult({
-        content: {
-          estimatedReadTime: 3,
-          wordCount: 450,
-          infoDensity: 'medium',
-          suggestions: [
-            '文字量适中，阅读时间约3分钟，符合移动端阅读习惯',
-            '建议在开头30字内点明主题，提高完播率',
-            '段落间距可适当加大，提升阅读体验'
-          ]
-        },
-        comments: {
-          topWords: [
-            { word: '好看', count: 15 },
-            { word: '学习了', count: 12 },
-            { word: '求教程', count: 8 },
-            { word: '太强了', count: 7 },
-            { word: '收藏了', count: 6 }
-          ],
-          sentiment: 'positive',
-          mainTopic: '用户对教程内容感兴趣，希望获得更详细的步骤说明'
-        },
-        commentQuality: {
-          effectiveRate: 75,
-          ineffectiveRate: 25,
-          analysis: '评论区质量较高，大部分评论表达了具体观点或提问，有互动价值。建议多回复"求教程"类评论，可以转化为粉丝。'
-        }
-      })
+
+    // 内容分析
+    const wordCount = data.content.length
+    const estimatedReadTime = Math.ceil(wordCount / 300) // 每分钟300字
+    const infoDensity = wordCount > 800 ? 'high' : wordCount > 300 ? 'medium' : 'low'
+
+    // 评论分析
+    const comments = data.commentList || []
+    const allCommentText = comments.map(c => c.content).join(' ')
+
+    // 关键词提取（简单的词频统计）
+    const keywords = extractKeywords(allCommentText)
+
+    // 情感分析
+    const sentiment = analyzeSentiment(allCommentText)
+
+    // 评论质量分析
+    const effectiveComments = comments.filter(c =>
+      c.content.length > 5 &&
+      !c.content.includes('@') &&
+      !/^[^一-龥a-zA-Z]*$/.test(c.content)
+    ).length
+    const effectiveRate = comments.length > 0 ? Math.round((effectiveComments / comments.length) * 100) : 0
+
+    setResult({
+      content: {
+        estimatedReadTime,
+        wordCount,
+        infoDensity,
+        suggestions: generateSuggestions(data, wordCount)
+      },
+      comments: {
+        topWords: keywords.slice(0, 10),
+        sentiment,
+        mainTopic: analyzeMainTopic(keywords, comments)
+      },
+      commentQuality: {
+        effectiveRate,
+        ineffectiveRate: 100 - effectiveRate,
+        analysis: generateCommentAnalysis(effectiveRate, comments)
+      }
+    })
+
+    setAnalyzing(false)
+  }
+
+  const extractKeywords = (text: string): { word: string; count: number }[] => {
+    // 简单的关键词提取：分词后统计
+    const commonWords = ['的', '了', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这']
+    const words = text.split(/[\s,，.。!！?？;；、]+/)
+    const wordCount: Record<string, number> = {}
+
+    words.forEach(word => {
+      if (word.length >= 2 && !commonWords.includes(word)) {
+        wordCount[word] = (wordCount[word] || 0) + 1
+      }
+    })
+
+    return Object.entries(wordCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([word, count]) => ({ word, count }))
+  }
+
+  const analyzeSentiment = (text: string): 'positive' | 'neutral' | 'negative' => {
+    const positiveWords = ['好', '棒', '喜欢', '爱', '赞', '漂亮', '好看', '优秀', '感谢', '推荐', '不错', '满意', '开心']
+    const negativeWords = ['差', '烂', '不好', '失望', '讨厌', '难看', '坑', '骗', '气', '烦', '垃圾']
+
+    let positive = 0
+    let negative = 0
+
+    positiveWords.forEach(word => {
+      if (text.includes(word)) positive++
+    })
+    negativeWords.forEach(word => {
+      if (text.includes(word)) negative++
+    })
+
+    if (positive > negative) return 'positive'
+    if (negative > positive) return 'negative'
+    return 'neutral'
+  }
+
+  const analyzeMainTopic = (keywords: { word: string; count: number }[], comments: any[]): string => {
+    if (keywords.length === 0) return '暂无足够数据'
+
+    const topWords = keywords.slice(0, 3).map(k => k.word).join('、')
+    const hasQuestions = comments.some(c => c.content.includes('?') || c.content.includes('？'))
+
+    if (hasQuestions) {
+      return `用户主要围绕"${topWords}"等话题提问或讨论，评论区互动性较好`
+    }
+    return `用户讨论集中在"${topWords}"等关键词，整体氛围${analyzeSentiment(comments.map(c => c.content).join(' ')) === 'positive' ? '积极' : '中性'}`
+  }
+
+  const generateSuggestions = (data: ExtractedData, wordCount: number): string[] => {
+    const suggestions: string[] = []
+
+    if (wordCount < 100) {
+      suggestions.push('内容较短，建议增加更多细节描述')
+    } else if (wordCount > 1000) {
+      suggestions.push('内容较长，建议在开头添加目录或要点总结')
+    } else {
+      suggestions.push('文字量适中，符合移动端阅读习惯')
+    }
+
+    const interactionRate = data.comments / (data.likes || 1)
+    if (interactionRate < 0.1) {
+      suggestions.push('评论率较低，建议结尾增加引导性提问')
+    }
+
+    if (data.content.includes('#')) {
+      suggestions.push('使用了话题标签，有助于增加曝光')
+    }
+
+    return suggestions
+  }
+
+  const generateCommentAnalysis = (effectiveRate: number, _comments: any[]): string => {
+    if (effectiveRate > 70) {
+      return `评论区质量较高（${effectiveRate}%有效评论），大部分评论表达了具体观点或提问。建议多回复高赞评论，可以转化为粉丝。`
+    } else if (effectiveRate > 40) {
+      return `评论区质量一般（${effectiveRate}%有效评论），有一定互动但存在较多简单回复。建议引导更有深度的讨论。`
+    } else {
+      return `评论区质量较低（${effectiveRate}%有效评论），无效评论（表情、@好友）占比较高。需要优化内容激发真实讨论。`
+    }
+  }
+
+  const handleAnalyze = () => {
+    if (inputMode === 'url' && !postUrl.trim()) return
+    if (inputMode === 'html' && !htmlContent.trim()) return
+
+    setAnalyzing(true)
+
+    if (inputMode === 'html') {
+      // 解析 HTML 提取数据
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(htmlContent, 'text/html')
+
+      const data: ExtractedData = {
+        title: doc.querySelector('h1')?.textContent || doc.title || '',
+        content: doc.body.innerText.slice(0, 2000),
+        author: '',
+        likes: 0,
+        collects: 0,
+        comments: 0,
+        shares: 0,
+        postTime: '',
+        url: ''
+      }
+
+      analyzeData(data)
+    } else {
+      // URL 模式需要后端支持，这里显示提示
+      alert('URL 自动爬取需要安装浏览器插件。请先安装 Tampermonkey 脚本，或切换到"粘贴 HTML"模式。')
       setAnalyzing(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -69,82 +225,143 @@ export default function PostAnalysisPage() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-900">单帖分析</h1>
         <p className="text-sm text-gray-500">
-          输入帖子链接，分析内容结构和评论质量
+          输入帖子链接或粘贴HTML，分析内容结构和评论质量
         </p>
       </div>
 
-      {/* 输入区域 */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          小红书帖子链接
-        </label>
-        <div className="flex gap-3">
-          <input
-            type="text"
-            value={postUrl}
-            onChange={(e) => setPostUrl(e.target.value)}
-            placeholder="https://www.xiaohongshu.com/explore/..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-          />
-          <button
-            onClick={handleAnalyze}
-            disabled={analyzing || !postUrl.trim()}
-            className="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {analyzing ? '分析中...' : '开始分析'}
-          </button>
-        </div>
-        {/* 爬虫接入说明 */}
-        <div className="mt-4 bg-amber-50 rounded-lg p-4 border border-amber-100">
-          <div className="flex items-start gap-3">
-            <span className="text-xl">🚧</span>
-            <div>
-              <h4 className="font-medium text-amber-900 mb-1">关于爬虫接入</h4>
-              <p className="text-sm text-amber-800 mb-2">
-                单帖分析需要爬取小红书公开的帖子内容和评论数据，这需要部署后端爬虫服务。
-              </p>
-              <p className="text-xs text-amber-700">
-                当前版本为前端演示，展示分析后的数据呈现形式。如需真实数据爬取，需额外部署 Python/Node.js 后端服务，处理反爬、登录态、数据解析等。
-              </p>
-              <details className="mt-2">
-                <summary className="text-xs text-amber-600 cursor-pointer hover:text-amber-800 font-medium">
-                  查看爬虫技术方案
-                </summary>
-                <div className="mt-2 pl-2 text-xs text-amber-700 space-y-1">
-                  <p>1. 使用 Puppeteer/Playwright 模拟浏览器行为</p>
-                  <p>2. 处理小红书反爬机制（滑块验证、请求频率限制）</p>
-                  <p>3. 解析加密接口返回的数据</p>
-                  <p>4. 评论内容需要做 NLP 分析（情感分析、关键词提取）</p>
-                  <p>5. 需定期更新 cookie/登录态</p>
-                </div>
-              </details>
-            </div>
+      {/* 使用说明 */}
+      <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 mb-6">
+        <div className="flex items-start gap-3">
+          <span className="text-xl">💡</span>
+          <div>
+            <h4 className="font-medium text-amber-900 mb-1">两种使用方式</h4>
+            <p className="text-sm text-amber-800">
+              <strong>方式1（推荐）：</strong>
+              <a
+                href="/xhs-analytics/xhs-extractor.user.js"
+                target="_blank"
+                className="text-red-600 hover:underline"
+              >
+                安装 Tampermonkey 脚本
+              </a>
+              ，在小红书页面点击"📊 分析此帖"按钮一键提取
+            </p>
+            <p className="text-sm text-amber-800 mt-1">
+              <strong>方式2：</strong>在小红书帖子页面右键「查看网页源代码」→ 全选复制 → 粘贴到下方输入框
+            </p>
           </div>
         </div>
       </div>
 
+      {/* 输入模式切换 */}
+      <div className="flex gap-4 mb-4">
+        <button
+          onClick={() => setInputMode('url')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            inputMode === 'url'
+              ? 'bg-red-500 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          方式1: 帖子链接
+        </button>
+        <button
+          onClick={() => setInputMode('html')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            inputMode === 'html'
+              ? 'bg-red-500 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          方式2: 粘贴HTML源码
+        </button>
+      </div>
+
+      {/* 输入区域 */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+        {inputMode === 'url' ? (
+          <>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              小红书帖子链接
+            </label>
+            <input
+              type="text"
+              value={postUrl}
+              onChange={(e) => setPostUrl(e.target.value)}
+              placeholder="https://www.xiaohongshu.com/explore/..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+            />
+            <p className="text-xs text-gray-400 mt-2">
+              需要先安装浏览器插件才能自动提取
+            </p>
+          </>
+        ) : (
+          <>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              粘贴网页源代码（Ctrl+A 全选后复制）
+            </label>
+            <textarea
+              value={htmlContent}
+              onChange={(e) => setHtmlContent(e.target.value)}
+              placeholder="右键页面 → 查看网页源代码 → 全选(Ctrl+A) → 复制(Ctrl+C) → 粘贴到这里..."
+              className="w-full h-40 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none font-mono text-xs"
+            />
+            <p className="text-xs text-gray-400 mt-2">
+              提示：在小红书帖子页面右键 → 查看网页源代码 → 全选复制
+            </p>
+          </>
+        )}
+
+        <button
+          onClick={handleAnalyze}
+          disabled={analyzing || (inputMode === 'url' ? !postUrl.trim() : !htmlContent.trim())}
+          className="mt-4 w-full px-6 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {analyzing ? '分析中...' : '开始分析'}
+        </button>
+      </div>
+
+      {/* 已提取的数据显示 */}
+      {extractedData && (
+        <div className="bg-green-50 rounded-xl border border-green-200 p-4 mb-8">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">✅</span>
+            <div className="flex-1">
+              <h4 className="font-medium text-green-900 mb-1">数据提取成功</h4>
+              <p className="text-sm text-green-800 font-medium">{extractedData.title}</p>
+              <div className="flex gap-4 mt-2 text-xs text-green-700">
+                <span>👤 {extractedData.author || '未知作者'}</span>
+                <span>👍 {extractedData.likes || 0}</span>
+                <span>⭐ {extractedData.collects || 0}</span>
+                <span>💬 {extractedData.comments || 0}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 功能说明 */}
-      {!result && (
+      {!result && !extractedData && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="text-3xl mb-3">⏱️</div>
             <h3 className="font-semibold text-gray-900 mb-2">阅读时间分析</h3>
             <p className="text-sm text-gray-500">
-              根据文字长度和视频时长，估算需要的阅读/观看时间。判断内容密度是否适合目标受众。
+              根据文字长度和视频时长，估算需要的阅读/观看时间
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="text-3xl mb-3">☁️</div>
             <h3 className="font-semibold text-gray-900 mb-2">评论词云</h3>
             <p className="text-sm text-gray-500">
-              提取评论中的高频词，分析用户讨论的焦点和情感倾向。了解观众真正关心什么。
+              提取评论高频词，分析用户讨论焦点和情感倾向
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="text-3xl mb-3">💬</div>
             <h3 className="font-semibold text-gray-900 mb-2">评论质量评估</h3>
             <p className="text-sm text-gray-500">
-              区分有效评论（提问、分享经验）和无效评论（纯表情、@好友）。评论区质量影响转化率。
+              区分有效评论和无效评论，评估互动价值
             </p>
           </div>
         </div>
@@ -153,6 +370,29 @@ export default function PostAnalysisPage() {
       {/* 分析结果 */}
       {result && (
         <div className="space-y-6">
+          {/* 基础数据 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 帖子数据</h2>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-gray-900">{extractedData?.likes || 0}</p>
+                <p className="text-xs text-gray-500">点赞</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-gray-900">{extractedData?.collects || 0}</p>
+                <p className="text-xs text-gray-500">收藏</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-gray-900">{extractedData?.comments || 0}</p>
+                <p className="text-xs text-gray-500">评论</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-gray-900">{extractedData?.shares || 0}</p>
+                <p className="text-xs text-gray-500">分享</p>
+              </div>
+            </div>
+          </div>
+
           {/* 内容分析 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">📄 内容分析</h2>
@@ -191,8 +431,8 @@ export default function PostAnalysisPage() {
                   key={item.word}
                   className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
                   style={{
-                    fontSize: `${Math.max(0.75, Math.min(1.25, item.count / 10))}rem`,
-                    opacity: Math.max(0.5, item.count / 15)
+                    fontSize: `${Math.max(0.75, Math.min(1.25, item.count / 5))}rem`,
+                    opacity: Math.max(0.5, item.count / 10)
                   }}
                 >
                   {item.word} ({item.count})
@@ -214,6 +454,24 @@ export default function PostAnalysisPage() {
             <p className="text-sm text-gray-600 mt-3 bg-gray-50 p-3 rounded-lg">
               <span className="font-medium">讨论焦点：</span>{result.comments.mainTopic}
             </p>
+
+            {/* 显示部分评论 */}
+            {extractedData?.commentList && extractedData.commentList.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">热门评论</h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {extractedData.commentList.slice(0, 5).map((comment, idx) => (
+                    <div key={idx} className="bg-gray-50 rounded p-2 text-sm">
+                      <span className="font-medium text-gray-700">{comment.author}:</span>
+                      <span className="text-gray-600 ml-1">{comment.content}</span>
+                      {comment.likes > 0 && (
+                        <span className="text-xs text-gray-400 ml-2">👍 {comment.likes}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 评论质量 */}
@@ -250,14 +508,19 @@ export default function PostAnalysisPage() {
             </p>
           </div>
 
-          {/* 提示信息 */}
-          <div className="bg-gray-50 rounded-lg p-4 text-center">
-            <p className="text-sm text-gray-500 mb-2">
-              以上是演示数据。完整功能需要接入小红书 API 或支持爬虫分析。
-            </p>
-            <Link to="/dashboard" className="text-red-500 hover:text-red-600 text-sm font-medium">
-              返回数据看板查看已有数据分析 →
-            </Link>
+          {/* 重新分析按钮 */}
+          <div className="text-center">
+            <button
+              onClick={() => {
+                setResult(null)
+                setExtractedData(null)
+                setPostUrl('')
+                setHtmlContent('')
+              }}
+              className="px-6 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              重新分析
+            </button>
           </div>
         </div>
       )}
