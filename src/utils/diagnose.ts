@@ -13,6 +13,7 @@ export function diagnosePost(post: Post, _allPosts: Post[]): Diagnosis {
       '封面点击率（CTR）',
       post.impressions
     ),
+    // 完播率层级（仅用于视频，如果数据缺失则跳过展示）
     diagnoseLayer(
       '阅读 → 完播',
       post.completionRate ?? 0,
@@ -25,14 +26,14 @@ export function diagnosePost(post: Post, _allPosts: Post[]): Diagnosis {
       post.interactionRate,
       benchmark.avgInteractionRate,
       '互动率',
-      post.interactionRate
+      post.views
     ),
     diagnoseLayer(
       '互动 → 涨粉',
       post.followConversionRate,
       benchmark.avgFollowConversionRate,
       '涨粉转化率',
-      post.followConversionRate
+      post.views
     ),
   ]
 
@@ -86,7 +87,6 @@ function attribute(
   post: Post
 ): { rootCause: string; attribution: string; improvements: Improvement[] } {
   const ctrRating = diagnosis[0].rating
-  const completionRating = diagnosis[1].rating
   const interactionRating = diagnosis[2].rating
   const followRating = diagnosis[3].rating
 
@@ -114,9 +114,9 @@ function attribute(
     ctrRating === 'poor' &&
     (interactionRating === 'great' || followRating === 'great')
   ) {
-    rootCause = '内容质量优秀，但流量获取环节（CTR）拖了后腿'
+    rootCause = '封面点击率偏低：内容质量很好，但流量获取环节拖了后腿'
     attribution =
-      '这是典型的"好内容没被人看到"。你的互动率（Interaction Rate）和涨粉转化率（Follow Conversion Rate）都很高——说明点进来的人认可你的内容。但是封面点击率（CTR）低，导致真正看到你内容的人太少。\n\n' +
+      '这是典型的"好内容没被人看到"。你的互动率（点赞+收藏+评论+分享）和涨粉转化率都很高——说明点进来的人认可你的内容。但是封面点击率（CTR）低，导致真正看到你内容的人太少。\n\n' +
       '说人话：你的内容其实很棒！看过的人都愿意点赞收藏关注。问题是太多人根本没点进来——你的封面和标题像一道帘子，把流量挡在外面了。你的内容是好菜，但门帘遮太严，路人闻不到香味。只要把门帘掀开，数据会爆发。'
     improvements.push({
       priority: 'high',
@@ -126,26 +126,32 @@ function attribute(
     })
   }
 
-  // 场景3: CTR 高但互动率低 → 内容质量不行
+  // 场景3: CTR 高但互动率低 → 内容未能兑现封面承诺
   if (ctrRating === 'great' && interactionRating === 'poor') {
-    rootCause = '封面/标题过度承诺，内容未能兑现预期（Clickbait 问题）'
+    rootCause = '封面/标题吸引力强，但内容未能兑现预期，用户互动意愿低'
     attribution =
-      '封面点击率（CTR）很高说明你很会抓眼球、起标题。但互动率（Interaction Rate）低说明用户点进来后觉得"就这？"，没有点赞收藏评论的冲动。这是典型的"封面和内容脱节"。\n\n' +
-      '说人话：你很会"骗"人点进来（这是本事），但内容没接住。就像电影预告片剪得太精彩，正片反而让人失望了。标题答应了用户什么，内容就得真给。问题不在你的封面，在你店里的"货"。'
+      '封面点击率（CTR）很高说明你很会抓眼球、起标题。但互动率（点赞+收藏+评论+分享）低说明用户点进来后觉得"就这？"，没有互动的冲动。这是典型的"封面和内容脱节"——用户被吸引进来，但内容没有给他们足够的价值或共鸣。\n\n' +
+      '说人话：你很会"吆喝"把人拉进店（这是本事），但店里的货没让人心动。就像餐厅门头很诱人，但菜上桌后客人觉得一般，吃完就走了，不会推荐给朋友。问题不在门面，在你的内容本身。'
     improvements.push({
       priority: 'high',
-      category: '内容质量提升',
+      category: '内容价值提升',
       description:
-        '标题承诺了什么内容就得兑现。开头前 3 秒直接上干货别铺垫。增加信息密度——多给"原来是这样"、"这个有用"的内容。结尾抛个问题引导大家在评论区讨论，提高互动率。',
+        '标题承诺了什么内容就得兑现。开头前 3 秒直接上干货别铺垫。增加信息密度——多给"原来是这样"、"这个有用"的内容。干货要 actionable（用户能马上用），情绪内容要引发共鸣。',
       referenceExample: '参考同类中互动率高的素人帖，注意他们的内容结构和信息密度',
+    })
+    improvements.push({
+      priority: 'medium',
+      category: '互动引导',
+      description:
+        '内容结尾抛个问题引导大家在评论区讨论，比如"你遇到过这种情况吗？"、"如果是你，会怎么选？"。明确引导能显著提升评论率。',
     })
   }
 
-  // 场景4: 互动率好涨粉率低 → 人设/IP 问题
+  // 场景4: 互动率好但涨粉率低 → 人设/IP 问题（内容有价值但缺乏持续关注价值）
   if (interactionRating === 'great' && followRating === 'poor') {
-    rootCause = '内容有吸引力，但账号人设/IP 不够强，缺乏持续关注价值'
+    rootCause = '涨粉转化率偏低：内容有吸引力，但账号人设/IP 不够强，缺乏持续关注价值'
     attribution =
-      '互动率（Interaction Rate）高说明大家喜欢这篇内容。但涨粉转化率（Follow Conversion Rate）低——大家喜欢你的内容但没关注你这个人。这说明内容本身有讨论价值，但用户不觉得"需要持续关注你"。\n\n' +
+      '互动率（Interaction Rate）高说明大家喜欢这篇内容，愿意点赞、收藏、评论。但涨粉转化率（Follow Conversion Rate）低——大家喜欢你的内容但没关注你这个人。这说明内容本身有讨论价值，但用户不觉得"需要持续关注你"。\n\n' +
       '说人话：你讲了个很好笑的笑话，大家都笑了，但没人问你叫什么名字。用户把你的内容当成"一次性消费品"——看完了、点赞了、然后划走了，没有关注你的理由。你需要让大家觉得：关注你之后，还能持续看到这样的好内容。'
     improvements.push({
       priority: 'high',
@@ -155,19 +161,25 @@ function attribute(
     })
   }
 
-  // 场景5: 完播率低
-  if (completionRating === 'poor' && ctrRating !== 'poor') {
+  // 场景5: 互动率低（移除完播率相关内容）
+  if (interactionRating === 'poor' && ctrRating !== 'poor') {
     if (!rootCause) {
-      rootCause = '完播率偏低：用户点进来了但中途退出，内容节奏或开头吸引力不足'
+      rootCause = '互动率偏低：用户点进来了但互动意愿不强，内容缺乏吸引力或互动引导'
       attribution =
-        '封面点击率（CTR）不错说明标题封面都有吸引力。但完播率低意味着用户进来后没看多久就划走了。问题大概率出在内容的开头部分——要么开头太啰嗦，要么节奏太慢，要么信息密度不够，让用户觉得"没啥好看的"。\n\n' +
-        '说人话：客人被你门口的招牌吸引进来了，但逛了两步觉得没意思转身就走了。你的"店内陈列"需要优化——尤其是进门后的前几秒。'
+        '封面点击率（CTR）不错说明标题封面都有吸引力。但互动率低意味着用户看完内容后，没有点赞、收藏、评论或分享的冲动。问题可能出在：①内容干货不够，用户觉得"就这？"；②缺乏情绪共鸣；③没有引导互动；④内容太长或节奏拖沓，用户没看完就划走了。\n\n' +
+        '说人话：客人被你门口的招牌吸引进来了，也逛了一圈，但什么都没买就走了。你的"货品"要么不够诱人，要么没有激发购买的欲望。'
     }
     improvements.push({
       priority: 'high',
-      category: '内容结构优化',
+      category: '内容价值提升',
       description:
-        '开头 3-5 秒（或前两段文字）直接上最吸引人的内容，别铺垫。视频把最精彩的画面放最前面。图文第一段就让人知道"这篇能给我什么"。删掉中间的废话段落。',
+        '增加内容的"信息量"或"情绪价值"——让用户觉得"有用"或"有共鸣"。干货类内容要给 actionable 的建议（用户能马上用的）。情绪类内容要说出用户心里想说但没说的话。',
+    })
+    improvements.push({
+      priority: 'medium',
+      category: '互动引导优化',
+      description:
+        '结尾明确引导互动——"你觉得呢？评论区告诉我"、"收藏起来下次用"、"转给需要的朋友"。人需要被提醒才会行动。',
     })
   }
 
@@ -183,10 +195,10 @@ function attribute(
 
   // 默认归因
   if (!rootCause) {
-    if (ctrRating === 'poor' && completionRating === 'poor' && interactionRating === 'poor') {
-      rootCause = '全链路数据偏低：选题方向或内容形式可能需要重新思考'
+    if (ctrRating === 'poor' && interactionRating === 'poor') {
+      rootCause = '封面点击和互动数据偏低：选题方向或内容形式可能需要重新思考'
       attribution =
-        '从曝光→点击→完播→互动，每一层的数据都低于同类均值。不一定是某一个环节的问题，更可能是选题本身受众太小，或者内容形式不适合你的目标用户。\n\n' +
+        '从曝光→点击→互动，数据都低于同类均值。不一定是某一个环节的问题，更可能是选题本身受众太小，或者内容形式不适合你的目标用户。\n\n' +
         '说人话：不是你的问题，可能是这个话题本身就不太讨喜。换个角度试试？想想你身边的朋友会对这个话题感兴趣吗？'
     } else {
       rootCause = '整体表现中等，部分环节有优化空间'

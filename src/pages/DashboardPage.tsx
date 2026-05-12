@@ -310,7 +310,7 @@ export default function DashboardPage() {
               relativeValue={selectedPost.interactionRate}
               relativeLabel="互动率"
               benchmarkValue={benchmark.avgInteractionRate}
-              diagnosis={diagnosis?.funnelDiagnosis[1]}
+              diagnosis={diagnosis?.funnelDiagnosis[2]}
               layerType="interaction"
             />
             <FunnelLayer
@@ -319,7 +319,7 @@ export default function DashboardPage() {
               relativeValue={selectedPost.followConversionRate}
               relativeLabel="涨粉转化率"
               benchmarkValue={benchmark.avgFollowConversionRate}
-              diagnosis={diagnosis?.funnelDiagnosis[2]}
+              diagnosis={diagnosis?.funnelDiagnosis[3]}
               layerType="conversion"
             />
           </div>
