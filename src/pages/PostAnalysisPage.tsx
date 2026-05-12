@@ -354,17 +354,6 @@ export default function PostAnalysisPage() {
       {/* 分析结果 */}
       {result && (
         <div className="space-y-6">
-          {/* 基础数据 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 帖子数据</h2>
-            <div className="flex justify-center">
-              <div className="bg-gray-50 rounded-lg p-4 text-center w-32">
-                <p className="text-2xl font-bold text-gray-900">{extractedData?.shares || 0}</p>
-                <p className="text-xs text-gray-500">分享</p>
-              </div>
-            </div>
-          </div>
-
           {/* 内容分析 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">📄 内容分析</h2>
