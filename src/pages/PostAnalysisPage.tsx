@@ -299,23 +299,22 @@ export default function PostAnalysisPage() {
         </div>
       </div>
 
-      {/* 等待数据提示 */}
-      <div className="bg-blue-50 rounded-xl border border-blue-200 p-6 mb-8 text-center">
-        <div className="text-4xl mb-3">⏳</div>
-        <h3 className="text-lg font-medium text-blue-900 mb-2">等待数据提取</h3>
-        <p className="text-sm text-blue-700">
-          请按照上方步骤安装 Tampermonkey 脚本，然后在小红书帖子页面点击"📊 分析此帖"按钮。<br/>
-          数据会自动发送到本页面进行分析。
-        </p>
-      </div>
-
-      {/* 已提取的数据显示 */}
-      {extractedData && (
-        <div className="bg-green-50 rounded-xl border border-green-200 p-4 mb-8">
+      {/* 数据状态提示 - 根据是否提取成功显示不同内容 */}
+      {!extractedData ? (
+        <div className="bg-blue-50 rounded-xl border border-blue-200 p-6 mb-8 text-center">
+          <div className="text-4xl mb-3">⏳</div>
+          <h3 className="text-lg font-medium text-blue-900 mb-2">等待数据提取</h3>
+          <p className="text-sm text-blue-700">
+            请按照上方步骤安装 Tampermonkey 脚本，然后在小红书帖子页面点击"📊 分析此帖"按钮。<br/>
+            数据会自动发送到本页面进行分析。
+          </p>
+        </div>
+      ) : (
+        <div className="bg-green-50 rounded-xl border border-green-200 p-6 mb-8">
           <div className="flex items-start gap-3">
-            <span className="text-xl">✅</span>
+            <span className="text-2xl">✅</span>
             <div className="flex-1">
-              <h4 className="font-medium text-green-900 mb-1">数据提取成功</h4>
+              <h3 className="text-lg font-medium text-green-900 mb-1">数据提取成功</h3>
               <p className="text-sm text-green-800 font-medium">{extractedData.title}</p>
               <div className="flex gap-4 mt-2 text-xs text-green-700">
                 <span>👤 {extractedData.author || '未知作者'}</span>
