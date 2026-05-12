@@ -91,6 +91,14 @@
         init();
     }
 
+    // 每分钟检查一次按钮是否存在（防止被页面移除）
+    setInterval(() => {
+        if (!document.getElementById('xhs-analyzer-btn')) {
+            console.log('[小红书数据提取器] 按钮被移除，重新创建');
+            init();
+        }
+    }, 5000);
+
     // 监听URL变化（SPA页面）
     let lastUrl = location.href;
     new MutationObserver(() => {
@@ -106,40 +114,66 @@
 
     async function extractData() {
         try {
-            showToast('🚀 开始提取数据，展开楼中楼评论...');
+            // 验证当前页面
+            if (!window.location.href.includes('/explore/')) {
+                showToast('❌ 请在帖子详情页使用此功能', true);
+                console.log('[小红书数据提取器] 当前不是帖子详情页:', window.location.href);
+                return;
+            }
 
-            // 先展开所有折叠的评论
-            await expandAllReplies();
+            showToast('🚀 开始提取数据...');
+            console.log('[小红书数据提取器] ==============================');
+            console.log('[小红书数据提取器] 开始提取，当前URL:', window.location.href);
 
-            showToast('📊 正在提取帖子数据和评论...');
+            // 提取帖子基础数据
+            const title = extractTitle();
+            console.log('[小红书数据提取器] 提取的标题:', title);
 
-            // 提取帖子数据
-            const data = {
-                title: extractTitle(),
-                content: extractContent(),
-                author: extractAuthor(),
-                likes: extractCount('点赞'),
-                collects: extractCount('收藏'),
-                comments: extractCount('评论'),
-                shares: extractCount('分享'),
-                postTime: extractPostTime(),
-                url: window.location.href,
-                extractTime: new Date().toISOString()
-            };
+            const author = extractAuthor();
+            console.log('[小红书数据提取器] 提取的作者:', author);
 
-            console.log('[小红书数据提取器] 提取的基础数据:', data);
+            const likes = extractCount('点赞');
+            const collects = extractCount('收藏');
+            const comments = extractCount('评论');
+            const shares = extractCount('分享');
+            console.log('[小红书数据提取器] 互动数据:', { likes, collects, comments, shares });
+
+            // 检查数据合理性
+            if (title === '未提取到标题' || title.length < 3) {
+                console.warn('[小红书数据提取器] 警告: 标题提取可能不准确');
+            }
+
+            showToast('📊 正在展开楼中楼评论...');
 
             // 提取评论
-            const comments = await extractComments();
-            data.commentList = comments;
+            const commentList = await extractComments();
 
-            console.log('[小红书数据提取器] 提取的评论数:', comments.length);
+            const data = {
+                title: title,
+                content: extractContent(),
+                author: author,
+                likes: likes,
+                collects: collects,
+                comments: comments,
+                shares: shares,
+                postTime: extractPostTime(),
+                url: window.location.href,
+                extractTime: new Date().toISOString(),
+                commentList: commentList
+            };
+
+            console.log('[小红书数据提取器] 提取完成:');
+            console.log('  - 标题:', title);
+            console.log('  - 作者:', author);
+            console.log('  - 点赞:', likes);
+            console.log('  - 评论:', comments, '(提取到', commentList.length, '条)');
+            console.log('[小红书数据提取器] ==============================');
 
             // 复制到剪贴板
             const jsonStr = JSON.stringify(data, null, 2);
             GM_setClipboard(jsonStr);
 
-            showToast('✅ 数据已提取！共' + comments.length + '条评论，正在打开分析工具...');
+            showToast(`✅ 已提取 ${commentList.length} 条评论！正在打开分析工具...`);
 
             // 打开分析工具
             const encodedData = encodeURIComponent(jsonStr);
@@ -147,39 +181,12 @@
 
             setTimeout(() => {
                 GM_openInTab(analysisUrl, { active: true });
-            }, 1500);
+            }, 1000);
 
         } catch (error) {
             showToast('❌ 提取失败：' + error.message, true);
             console.error('[小红书数据提取器] 提取错误:', error);
         }
-    }
-
-    // 展开所有楼中楼回复
-    async function expandAllReplies() {
-        console.log('[小红书数据提取器] 开始展开楼中楼评论...');
-
-        // 尝试点击所有"展开X条回复"按钮
-        const expandTexts = ['展开', '条回复', '查看更多', '查看更多回复'];
-        let expandedCount = 0;
-
-        for (const text of expandTexts) {
-            const buttons = document.querySelectorAll('span, div, button');
-            for (const btn of buttons) {
-                if (btn.textContent.includes(text) && btn.textContent.includes('回复')) {
-                    try {
-                        btn.click();
-                        expandedCount++;
-                        await sleep(200);
-                    } catch (e) {}
-                }
-            }
-        }
-
-        console.log('[小红书数据提取器] 展开了', expandedCount, '个楼中楼');
-
-        // 等待内容加载
-        await sleep(1000);
     }
 
     function sleep(ms) {
@@ -410,18 +417,58 @@
         const comments = [];
         const seenContents = new Set();
 
-        // 滚动加载更多评论（最多滚动20次）
-        for (let i = 0; i < 20; i++) {
-            window.scrollTo(0, document.body.scrollHeight);
-            await sleep(600);
+        // 查找评论区容器（尝试多种可能的选择器）
+        let commentContainer = document.querySelector('#comment-container, [class*="comment-list"], [class*="comments-list"], [class*="comment-section"]');
+
+        // 如果没有找到特定容器，使用页面主体
+        const scrollTarget = commentContainer || document.documentElement;
+        const isContainerScroll = !!commentContainer;
+
+        console.log('[小红书数据提取器] 评论区容器:', commentContainer ? '找到' : '未找到，使用页面滚动');
+
+        // 展开所有楼中楼回复（先点击所有展开按钮）
+        console.log('[小红书数据提取器] 开始展开楼中楼评论...');
+        let expandCount = 0;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const expandBtns = document.querySelectorAll('button, div, span, a');
+            let foundNew = false;
+            for (const btn of expandBtns) {
+                const text = btn.textContent.trim();
+                // 匹配"展开X条回复"、"查看更多回复"等
+                if (/^展开\d+条回复/.test(text) || text === '查看更多回复' || text === '展开回复') {
+                    if (btn.offsetParent !== null) { // 确保按钮可见
+                        btn.click();
+                        expandCount++;
+                        foundNew = true;
+                        await sleep(200);
+                    }
+                }
+            }
+            if (!foundNew) break; // 没有新的展开按钮了
+        }
+        console.log('[小红书数据提取器] 展开了', expandCount, '个楼中楼');
+
+        // 滚动加载更多评论（最多滚动15次）
+        console.log('[小红书数据提取器] 开始滚动加载评论...');
+        for (let i = 0; i < 15; i++) {
+            if (isContainerScroll && commentContainer) {
+                // 滚动评论区容器
+                commentContainer.scrollTop = commentContainer.scrollHeight;
+            } else {
+                // 滚动页面
+                window.scrollTo(0, document.body.scrollHeight);
+            }
+            await sleep(800);
 
             // 尝试点击"加载更多"按钮
             const loadMoreBtns = document.querySelectorAll('button, div, span');
             for (const btn of loadMoreBtns) {
                 const text = btn.textContent.trim();
-                if (text.includes('加载更多') || text.includes('查看更多评论') || /^展开\d+条回复/.test(text)) {
-                    btn.click();
-                    await sleep(300);
+                if (text === '加载更多' || text === '查看更多评论' || text === '展开更多') {
+                    if (btn.offsetParent !== null) {
+                        btn.click();
+                        await sleep(400);
+                    }
                 }
             }
         }
@@ -429,125 +476,146 @@
         // 使用精确的选择器提取评论
         // 小红书的评论结构：父评论 + 子评论（楼中楼）
         const commentSelectors = [
-            // 主要评论容器选择器
+            // 主要评论容器选择器 - 小红书常见的评论项class
             '[class*="comment-item"]',
             '[class*="CommentItem"]',
             'div[class*="comment-"] > div',
-            '[data-v-] > div[class]'
+            '[class*="note-comment"] > div',
+            '.comments-container > div > div',
+            '#comment-container > div > div'
         ];
 
         let commentElements = [];
         for (const selector of commentSelectors) {
-            const elements = document.querySelectorAll(selector);
-            if (elements.length > 0) {
-                commentElements = elements;
-                break;
-            }
+            try {
+                const elements = document.querySelectorAll(selector);
+                if (elements.length > 3) { // 至少要有几条评论才算找到
+                    commentElements = elements;
+                    console.log('[小红书数据提取器] 使用选择器:', selector, '找到', elements.length, '个元素');
+                    break;
+                }
+            } catch (e) {}
         }
 
         // 如果上面的选择器没找到，使用备选方案
         if (commentElements.length === 0) {
             // 查找评论区域
-            const commentSection = document.querySelector('#comment-container, [class*="comment-list"], [class*="comments-list"]');
+            const commentSection = document.querySelector('#comment-container, [class*="comment-list"], [class*="comments-list"], [class*="comment-section"]');
             if (commentSection) {
-                // 查找所有可能包含评论的div
-                const allDivs = commentSection.querySelectorAll(':scope > div > div');
+                // 查找直接子元素
+                const allDivs = commentSection.querySelectorAll(':scope > div');
                 commentElements = Array.from(allDivs);
+                console.log('[小红书数据提取器] 使用评论区子元素，找到', commentElements.length, '个');
             }
         }
 
-        console.log('[小红书数据提取器] 找到评论元素:', commentElements.length);
+        // 备选：从整个页面找所有可能包含用户头像和评论内容的块
+        if (commentElements.length === 0) {
+            const allComments = [];
+            const possibleComments = document.querySelectorAll('a[href*="user"]');
+            possibleComments.forEach(a => {
+                const parent = a.closest('div[class]');
+                if (parent) {
+                    const siblingDivs = parent.querySelectorAll(':scope > div');
+                    if (siblingDivs.length >= 2) {
+                        allComments.push(parent);
+                    }
+                }
+            });
+            if (allComments.length > 3) {
+                commentElements = allComments;
+                console.log('[小红书数据提取器] 使用用户链接定位，找到', commentElements.length, '个');
+            }
+        }
+
+        console.log('[小红书数据提取器] 最终找到评论元素:', commentElements.length);
 
         commentElements.forEach(el => {
             try {
                 // 跳过非评论元素（如广告、推荐等）
-                if (el.querySelector('img[src*="ad"]') || el.textContent.length > 5000) return;
+                if (el.querySelector('img[src*="ad"]') || el.textContent.length > 3000) return;
 
-                // 提取评论内容 - 查找包含实际评论文本的元素
-                let content = '';
-                let contentEl = null;
-
-                // 尝试多种内容选择器
-                const contentSelectors = [
-                    '[class*="content"] span',
-                    '[class*="text"] span',
-                    'span[class*="content"]',
-                    'span[class*="text"]',
-                    'div > span:last-child',
-                    'a + span',
-                    'a ~ span'
-                ];
-
-                for (const sel of contentSelectors) {
-                    const el2 = el.querySelector(sel);
-                    if (el2 && el2.textContent.trim().length > 1) {
-                        // 排除包含"回复"、"赞"等元素
-                        const text = el2.textContent.trim();
-                        if (!text.includes('@') || text.length > 3) {
-                            contentEl = el2;
-                            content = text;
-                            break;
-                        }
-                    }
-                }
-
-                // 如果没找到，尝试直接从子元素提取
-                if (!content) {
-                    const spans = el.querySelectorAll('span');
-                    for (const span of spans) {
-                        const text = span.textContent.trim();
-                        // 过滤条件：长度>1，不包含特殊关键词，不是纯数字
-                        if (text.length > 1 && text.length < 500 &&
-                            !text.includes('赞') && !text.includes('回复') &&
-                            !/^\d+$/.test(text) && !text.includes('展开') &&
-                            !text.startsWith('@')) {
-                            content = text;
-                            contentEl = span;
-                            break;
-                        }
-                    }
-                }
-
-                // 提取作者 - 通常是链接或特定class的元素
+                // 提取作者 - 第一个用户链接
                 let author = '';
-                const authorSelectors = [
-                    'a[href*="user"]',
-                    'a[class*="name"]',
-                    'a[class*="author"]',
-                    '[class*="username"]',
-                    'a:first-child'
-                ];
-
-                for (const sel of authorSelectors) {
-                    const authorEl = el.querySelector(sel);
-                    if (authorEl) {
-                        const text = authorEl.textContent.trim();
-                        if (text && text.length < 50 && !text.includes(' ')) {
-                            author = text;
-                            break;
-                        }
-                    }
+                const authorEl = el.querySelector('a[href*="user"], a[class*="name"]');
+                if (authorEl) {
+                    author = authorEl.textContent.trim();
                 }
 
                 // 如果没有找到作者，跳过这条
-                if (!author) return;
+                if (!author || author.length > 50 || author.includes(' ')) return;
+
+                // 提取评论内容
+                let content = '';
+
+                // 方法1: 查找包含"回复"的父元素内的span
+                const replyLinks = el.querySelectorAll('span, div');
+                for (const link of replyLinks) {
+                    const text = link.textContent.trim();
+                    // 真正的评论通常包含"回复"关键词或者是主要文本内容
+                    if (text.startsWith('回复') && text.includes(':')) {
+                        const match = text.match(/回复[^:]+:\s*(.+)/);
+                        if (match) {
+                            content = match[1].trim();
+                            break;
+                        }
+                    }
+                }
+
+                // 方法2: 如果没找到，尝试从结构中提取
+                if (!content) {
+                    // 找到作者链接后面的第一个span
+                    const allElements = el.querySelectorAll('*');
+                    let foundAuthor = false;
+                    for (const elem of allElements) {
+                        if (elem === authorEl || elem.contains(authorEl)) {
+                            foundAuthor = true;
+                            continue;
+                        }
+                        if (foundAuthor && elem.tagName === 'SPAN') {
+                            const text = elem.textContent.trim();
+                            // 过滤掉点赞数、时间等
+                            if (text.length > 1 && text.length < 1000 &&
+                                !/^\d+$/.test(text) &&
+                                !text.includes('赞') &&
+                                !text.includes('回复') &&
+                                !text.includes('展开')) {
+                                content = text;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 方法3: 从所有span中提取最长的（排除已知非评论的）
+                if (!content) {
+                    let maxLen = 0;
+                    const spans = el.querySelectorAll('span');
+                    for (const span of spans) {
+                        const text = span.textContent.trim();
+                        if (text.length > maxLen && text.length < 1000 &&
+                            !text.includes('@') &&
+                            !text.includes('赞') &&
+                            !text.includes('回复') &&
+                            !text.includes('展开') &&
+                            !/^\d+$/.test(text) &&
+                            text !== author) {
+                            maxLen = text.length;
+                            content = text;
+                        }
+                    }
+                }
 
                 // 提取点赞数
                 let likes = 0;
-                const likeSelectors = [
-                    '[class*="like"]',
-                    'span:contains("赞")',
-                    'span svg + span',
-                    'span:last-child'
-                ];
-
-                for (const sel of likeSelectors) {
-                    const likesEl = el.querySelector(sel);
-                    if (likesEl) {
-                        const text = likesEl.textContent.trim();
-                        const match = text.match(/(\d+)/);
-                        if (match && !text.includes('回复')) {
-                            likes = parseInt(match[1]) || 0;
+                const likeElements = el.querySelectorAll('span, div');
+                for (const likeEl of likeElements) {
+                    const text = likeEl.textContent.trim();
+                    // 匹配纯数字（点赞数）
+                    if (/^\d+$/.test(text)) {
+                        const num = parseInt(text);
+                        if (num < 100000) { // 合理的点赞数范围
+                            likes = num;
                             break;
                         }
                     }
@@ -556,9 +624,9 @@
                 // 清理内容
                 content = content.replace(/回复\s*$/, '').trim();
 
-                // 去重检查
+                // 去重检查（需要同时有作者和内容）
                 if (content && content.length > 0 && content.length < 1000) {
-                    const uniqueKey = `${author}:${content.slice(0, 50)}`;
+                    const uniqueKey = `${author}:${content.slice(0, 30)}`;
                     if (!seenContents.has(uniqueKey)) {
                         seenContents.add(uniqueKey);
                         comments.push({ author, content, likes });
