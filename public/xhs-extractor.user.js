@@ -204,19 +204,56 @@
     }
 
     function extractCount(type) {
-        // 通过文本内容查找
-        const elements = document.querySelectorAll('span, div, button');
-        for (const el of elements) {
-            const text = el.textContent;
-            if (text.includes(type)) {
-                // 提取数字
-                const match = text.match(/(\d+\.?\d*)/);
+        // 通过 aria-label 属性查找（小红书无障碍标签）
+        const ariaElements = document.querySelectorAll(`[aria-label*="${type}"]`);
+        for (const el of ariaElements) {
+            const ariaLabel = el.getAttribute('aria-label');
+            if (ariaLabel) {
+                // 匹配 "点赞 123" 或 "123 点赞" 格式
+                const match = ariaLabel.match(/(\d+[\.\d]*[万kK]?)/);
                 if (match) {
-                    return parseInt(match[1]);
+                    return parseCount(match[1]);
                 }
             }
         }
+
+        // 通过文本内容查找
+        const elements = document.querySelectorAll('span, div, button');
+        for (const el of elements) {
+            const text = el.textContent.trim();
+            // 匹配 "点赞"、"收藏"、"评论"、"分享" 后面的数字
+            if (text.startsWith(type) || text.endsWith(type)) {
+                const match = text.match(/(\d+[\.\d]*[万kK]?)/);
+                if (match) {
+                    return parseCount(match[1]);
+                }
+            }
+        }
+
+        // 通过 SVG 图标后的数字查找
+        const icons = document.querySelectorAll('svg, use');
+        for (const icon of icons) {
+            const parent = icon.parentElement;
+            if (parent) {
+                const text = parent.textContent.trim();
+                if (text.match(/^\d+[\.\d]*[万kK]?$/)) {
+                    return parseCount(text);
+                }
+            }
+        }
+
         return 0;
+    }
+
+    function parseCount(text) {
+        text = text.toLowerCase().replace(/,/g, '');
+        if (text.includes('万')) {
+            return parseFloat(text) * 10000;
+        }
+        if (text.includes('k')) {
+            return parseFloat(text) * 1000;
+        }
+        return parseInt(text) || 0;
     }
 
     function extractPostTime() {

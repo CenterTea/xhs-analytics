@@ -29,10 +29,7 @@ interface ExtractedData {
 
 export default function PostAnalysisPage() {
   const location = useLocation()
-  const [inputMode, setInputMode] = useState<'url' | 'html'>('url')
-  const [postUrl, setPostUrl] = useState('')
-  const [htmlContent, setHtmlContent] = useState('')
-  const [analyzing, setAnalyzing] = useState(false)
+  // 分析状态由数据接收驱动，不再需要手动触发
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null)
   const [result, setResult] = useState<{
     content: PostContentAnalysis
@@ -60,8 +57,6 @@ export default function PostAnalysisPage() {
   }, [location])
 
   const analyzeData = (data: ExtractedData) => {
-    setAnalyzing(true)
-
     // 内容分析
     const wordCount = data.content.length
     const estimatedReadTime = Math.ceil(wordCount / 300) // 每分钟300字
@@ -103,25 +98,65 @@ export default function PostAnalysisPage() {
         analysis: generateCommentAnalysis(effectiveRate, comments)
       }
     })
-
-    setAnalyzing(false)
   }
 
   const extractKeywords = (text: string): { word: string; count: number }[] => {
-    // 简单的关键词提取：分词后统计
-    const commonWords = ['的', '了', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这']
-    const words = text.split(/[\s,，.。!！?？;；、]+/)
+    if (!text || text.length < 10) return []
+
+    // 停用词列表 - 扩展更多常见无意义词汇
+    const stopWords = new Set([
+      '的', '了', '是', '我', '有', '和', '就', '不', '人', '都', '一', '上', '也', '很', '到', '说', '要', '去', '你', '会',
+      '着', '没有', '看', '好', '自己', '这', '那', '在', '他', '她', '它', '们', '个', '来', '过', '下', '大', '小',
+      '吗', '吧', '呢', '啊', '哦', '嗯', '哈', '哈哈', '哈哈哈', '嘿嘿', '嘻嘻', '呵呵', 'hhh', 'hhhh',
+      '可以', '真的', '感觉', '觉得', '就是', '这个', '那个', '什么', '怎么', '为什么', '因为', '所以',
+      '但是', '然后', '还是', '不过', '其实', '可能', '应该', '好像', '一样', '一下', '一样',
+      'up', '楼主', '作者', '博主', '姐妹', '集美', '宝子', '宝宝', '姐妹',
+      '求', '求求', '跪求', '蹲', '蹲蹲', '同蹲', '跟', '跟跟', '带', '带带',
+      '链接', '连接', 'lj', '价格', '多少', '钱', '元', '买', '卖', '链接在哪里',
+      '@', '//@', '回复', '引用', '转发', '赞', '赞了', '已赞', '收藏', '收藏了',
+      '好看', '不错', '喜欢', '爱了', '太棒', '厉害', '优秀', '好看', '漂亮', '美', '棒', '赞'
+    ])
+
+    // 清理文本
+    const cleanedText = text
+      .replace(/[@@][^\s]+/g, ' ') // 移除@用户
+      .replace(/https?:\/\/[^\s]+/g, ' ') // 移除链接
+      .replace(/[表情][^\s]*|[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ' ') // 移除表情符号
+      .replace(/[0-9]+/g, ' ') // 移除纯数字
+
+    // 提取2-6字的词组
     const wordCount: Record<string, number> = {}
 
-    words.forEach(word => {
-      if (word.length >= 2 && !commonWords.includes(word)) {
-        wordCount[word] = (wordCount[word] || 0) + 1
+    // 方法1：基于标点和空格的简单分词
+    const segments = cleanedText.split(/[\s,，.。!！?？;；、~～…]+/).filter(s => s.length >= 2)
+
+    segments.forEach(segment => {
+      // 提取完整词组（2-6字）
+      if (segment.length >= 2 && segment.length <= 6 && !stopWords.has(segment)) {
+        wordCount[segment] = (wordCount[segment] || 0) + 1
+      }
+
+      // 提取滑动窗口词组
+      for (let len = 2; len <= 4 && len <= segment.length; len++) {
+        for (let i = 0; i <= segment.length - len; i++) {
+          const word = segment.substr(i, len)
+          // 过滤条件：不包含停用词开头/结尾、不全是数字或字母
+          if (!stopWords.has(word) &&
+              !stopWords.has(word[0]) &&
+              !stopWords.has(word[word.length - 1]) &&
+              !/^\d+$/.test(word) &&
+              word.length >= 2) {
+            wordCount[word] = (wordCount[word] || 0) + 1
+          }
+        }
       }
     })
 
+    // 过滤低频词，排序取前15
     return Object.entries(wordCount)
+      .filter(([_, count]) => count >= 2) // 至少出现2次
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
+      .slice(0, 15)
       .map(([word, count]) => ({ word, count }))
   }
 
@@ -189,261 +224,14 @@ export default function PostAnalysisPage() {
     }
   }
 
-  const handleAnalyze = () => {
-    if (inputMode === 'url' && !postUrl.trim()) return
-    if (inputMode === 'html' && !htmlContent.trim()) return
-
-    setAnalyzing(true)
-
-    if (inputMode === 'html') {
-      // 解析 HTML 提取数据
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(htmlContent, 'text/html')
-
-      // 从 HTML 中提取互动数据
-      const htmlText = htmlContent
-
-      // 提取点赞数 - 尝试多种可能的数据格式（小红书页面源代码格式）
-      let likes = 0
-      // 优先尝试小红书特定的数据格式
-      const likeMatches = [
-        // 小红书creator后台导出格式
-        htmlText.match(/"liked_count"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"like_count"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"likes"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"likeCount"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"likedCount"[:：]\s*"?(\d+)/i),
-        // 尝试在特定标签内匹配
-        htmlText.match(/点赞\s*[：:]\s*(\d+)/),
-        htmlText.match(/喜欢\s*[：:]\s*(\d+)/),
-        htmlText.match(/>点赞<[^>]*>\s*<[^>]*>(\d+)/),
-        // JSON格式
-        htmlText.match(/"interaction"[^{]*{[^}]*"like"[：:]\s*(\d+)/i),
-        // 从包含like的JSON对象中提取
-        htmlText.match(/"like"[^{}]*:\s*"?(\d+)"?/),
-      ]
-      for (const match of likeMatches) {
-        if (match) {
-          const value = parseInt(match[1]) || 0
-          if (value > likes) likes = value
-        }
-      }
-
-      // 提取收藏数
-      let collects = 0
-      const collectMatches = [
-        htmlText.match(/"collected_count"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"collect_count"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"collects"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"collectCount"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"collectedCount"[:：]\s*"?(\d+)/i),
-        htmlText.match(/收藏\s*[：:]\s*(\d+)/),
-        htmlText.match(/>收藏<[^>]*>\s*<[^>]*>(\d+)/),
-        htmlText.match(/"favoriteCount"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"favorite"[^{}]*:\s*"?(\d+)"?/),
-      ]
-      for (const match of collectMatches) {
-        if (match) {
-          const value = parseInt(match[1]) || 0
-          if (value > collects) collects = value
-        }
-      }
-
-      // 提取评论数
-      let comments = 0
-      const commentMatches = [
-        htmlText.match(/"comment_count"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"comments_count"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"comments"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"commentCount"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"commentsCount"[:：]\s*"?(\d+)/i),
-        htmlText.match(/评论\s*[：:]\s*(\d+)/),
-        htmlText.match(/>评论<[^>]*>\s*<[^>]*>(\d+)/),
-        htmlText.match(/"comment"[^{}]*:\s*"?(\d+)"?/),
-      ]
-      for (const match of commentMatches) {
-        if (match) {
-          const value = parseInt(match[1]) || 0
-          if (value > comments) comments = value
-        }
-      }
-
-      // 提取分享数
-      let shares = 0
-      const shareMatches = [
-        htmlText.match(/"share_count"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"shares"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"shareCount"[:：]\s*"?(\d+)/i),
-        htmlText.match(/"sharedCount"[:：]\s*"?(\d+)/i),
-        htmlText.match(/分享\s*[：:]\s*(\d+)/),
-        htmlText.match(/转发\s*[：:]\s*(\d+)/),
-        htmlText.match(/>分享<[^>]*>\s*<[^>]*>(\d+)/),
-        htmlText.match(/"share"[^{}]*:\s*"?(\d+)"?/),
-      ]
-      for (const match of shareMatches) {
-        if (match) {
-          const value = parseInt(match[1]) || 0
-          if (value > shares) shares = value
-        }
-      }
-
-      // 提取作者名 - 小红书creator后台字段
-      let author = ''
-      const authorMatches = [
-        htmlText.match(/"nick_name"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/"nickname"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/"author_name"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/"author"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/"user_name"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/"userName"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/<meta[^>]*author[^>]*content="([^"]+)"/i),
-      ]
-      for (const match of authorMatches) {
-        if (match && match[1]) {
-          author = match[1].trim()
-          if (author && author.length > 0 && author !== '小红书') break
-        }
-      }
-
-      // 提取发布时间
-      let postTime = ''
-      const timeMatches = [
-        htmlText.match(/"create_time"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/"publish_time"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/"post_time"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/"time"[:：]\s*"([^"]{10,20})"/),
-        htmlText.match(/发布于\s*"?([^"<]+)/),
-        htmlText.match(/<meta[^>]*time[^>]*content="([^"]+)"/i),
-      ]
-      for (const match of timeMatches) {
-        if (match && match[1]) {
-          postTime = match[1].trim()
-          if (postTime && postTime.length >= 8) break
-        }
-      }
-
-      // 提取URL
-      let url = ''
-      const urlMatches = [
-        htmlText.match(/"url"[:：]\s*"(https:\/\/www\.xiaohongshu\.com\/[^"]+)"/),
-        htmlText.match(/"share_url"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/"note_url"[:：]\s*"([^"]+)"/i),
-        htmlText.match(/<link[^>]*canonical[^>]*href="([^"]+)"/i),
-        htmlText.match(/href="(https:\/\/www\.xiaohongshu\.com\/explore\/[^"]+)"/),
-      ]
-      for (const match of urlMatches) {
-        if (match && match[1]) {
-          url = match[1].trim()
-          if (url.includes('xiaohongshu.com')) break
-        }
-      }
-
-      // 提取标题
-      let title = ''
-      // 先尝试从DOM提取
-      const h1 = doc.querySelector('h1')
-      if (h1) {
-        title = h1.textContent?.trim() || ''
-      }
-      // 如果h1没有，尝试其他选择器
-      if (!title) {
-        const titleEl = doc.querySelector('title')
-        if (titleEl) {
-          title = titleEl.textContent?.trim() || ''
-          // 移除小红书后缀
-          title = title.replace(/\s*-\s*小红书$/, '').trim()
-        }
-      }
-      // 尝试从JSON数据提取
-      if (!title || title.length < 5) {
-        const titleMatches = [
-          htmlText.match(/"title"[:：]\s*"([^"]{5,100})"/i),
-          htmlText.match(/"note_title"[:：]\s*"([^"]{5,100})"/i),
-          htmlText.match(/"post_title"[:：]\s*"([^"]{5,100})"/i),
-          htmlText.match(/"caption"[:：]\s*"([^"]{5,100})"/i),
-        ]
-        for (const match of titleMatches) {
-          if (match && match[1]) {
-            const candidate = match[1].trim()
-            if (candidate.length > title.length) {
-              title = candidate
-            }
-          }
-        }
-      }
-
-      // 提取正文内容
-      let content = ''
-      const contentMatches = [
-        htmlText.match(/"desc"[:：]\s*"([^"]{20,10000})"/i),
-        htmlText.match(/"description"[:：]\s*"([^"]{20,10000})"/i),
-        htmlText.match(/"content"[:：]\s*"([^"]{20,10000})"/i),
-        htmlText.match(/"text"[:：]\s*"([^"]{20,10000})"/i),
-      ]
-      for (const match of contentMatches) {
-        if (match && match[1]) {
-          const candidate = match[1].trim()
-          if (candidate.length > content.length) {
-            content = candidate
-          }
-        }
-      }
-      // 如果还是没找到，从body提取
-      if (!content && doc.body) {
-        const bodyText = doc.body.innerText?.slice(0, 2000) || ''
-        // 尝试过滤掉无关内容
-        const lines = bodyText.split('\n').filter(line => line.trim().length > 10)
-        if (lines.length > 0) {
-          content = lines.slice(0, 5).join('\n')
-        }
-      }
-
-      // 如果URL是帖子链接，尝试从URL提取笔记ID
-      let noteId = ''
-      if (url) {
-        const noteMatch = url.match(/\/explore\/([a-zA-Z0-9]+)/)
-        if (noteMatch) {
-          noteId = noteMatch[1]
-        }
-      }
-
-      const data: ExtractedData = {
-        title: title || '未知标题',
-        content: content || '未提取到正文内容',
-        author: author || '未知作者',
-        likes,
-        collects,
-        comments,
-        shares,
-        postTime: postTime || '',
-        url: url || (noteId ? `https://www.xiaohongshu.com/explore/${noteId}` : '')
-      }
-
-      // 验证数据有效性
-      if (likes === 0 && collects === 0 && comments === 0) {
-        console.log('提取结果:', data)
-        alert('未能从HTML中提取到互动数据。\n\n可能原因：\n1. 粘贴的不是小红书帖子页面的完整源代码\n2. 小红书页面格式已更新\n\n建议：使用方式1（Tampermonkey脚本）或确保完整复制「查看网页源代码」的内容。')
-        setAnalyzing(false)
-        return
-      }
-
-      // 调试日志
-      console.log('提取的数据:', data)
-
-      analyzeData(data)
-    } else {
-      // URL 模式需要后端支持，这里显示提示
-      alert('URL 自动爬取需要安装浏览器插件。请先安装 Tampermonkey 脚本，或切换到"粘贴 HTML"模式。')
-      setAnalyzing(false)
-    }
-  }
+  // HTML粘贴功能已移除，仅支持Tampermonkey脚本
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-900">单帖分析</h1>
         <p className="text-sm text-gray-500">
-          输入帖子链接或粘贴HTML，分析内容结构和评论质量
+          使用 Tampermonkey 脚本自动提取帖子数据，分析内容结构和评论质量
         </p>
       </div>
 
@@ -452,159 +240,86 @@ export default function PostAnalysisPage() {
         <div className="flex items-start gap-3">
           <span className="text-xl">💡</span>
           <div className="flex-1">
-            <h4 className="font-medium text-amber-900 mb-2">两种使用方式</h4>
+            <h4 className="font-medium text-amber-900 mb-2">使用方式：Tampermonkey 脚本一键提取</h4>
 
-            {/* 方式1 详细教程 */}
             <div className="bg-white rounded-lg p-3 mb-3 border border-amber-100">
-              <p className="text-sm font-medium text-amber-900 mb-2">方式1（推荐）：Tampermonkey 脚本一键提取</p>
-
-              <div className="space-y-2">
-                <details className="group">
-                  <summary className="cursor-pointer text-sm text-amber-800 hover:text-amber-900 flex items-center gap-1">
-                    <span className="transition-transform group-open:rotate-90">▶</span>
-                    步骤1：安装 Tampermonkey 扩展
-                  </summary>
-                  <div className="mt-2 pl-4 text-xs text-amber-700 space-y-1">
-                    <p>• Chrome/Edge 用户：访问 Chrome 网上应用店，搜索"Tampermonkey"，点击"添加至 Chrome"</p>
-                    <p>• Safari 用户：Mac App Store 搜索"Tampermonkey"安装</p>
-                    <p>• 安装成功后，浏览器右上角会出现一个黑色/彩色的圆形图标</p>
-                  </div>
-                </details>
-
-                <details className="group">
-                  <summary className="cursor-pointer text-sm text-amber-800 hover:text-amber-900 flex items-center gap-1">
-                    <span className="transition-transform group-open:rotate-90">▶</span>
-                    步骤2：安装数据提取脚本
-                  </summary>
-                  <div className="mt-2 pl-4 text-xs text-amber-700 space-y-1">
-                    <p>• 点击下方链接：<a href="/xhs-analytics/xhs-extractor.user.js" target="_blank" className="text-red-600 hover:underline font-medium">安装小红书数据提取脚本</a></p>
-                    <p>• 浏览器会跳转到 Tampermonkey 的安装确认页面</p>
-                    <p>• 点击页面上的"安装"按钮（绿色按钮）</p>
-                    <p>• 安装成功后，Tampermonkey 图标会显示数字"1"，表示有1个脚本在运行</p>
-                  </div>
-                </details>
-
-                <details className="group">
-                  <summary className="cursor-pointer text-sm text-amber-800 hover:text-amber-900 flex items-center gap-1">
-                    <span className="transition-transform group-open:rotate-90">▶</span>
-                    步骤3：使用脚本提取数据
-                  </summary>
-                  <div className="mt-2 pl-4 text-xs text-amber-700 space-y-1">
-                    <p>• 打开任意小红书帖子页面（如 xiaohongshu.com/explore/xxxxx）</p>
-                    <p>• 等待页面完全加载（约2-3秒）</p>
-                    <p>• 页面右上角会出现红色按钮"📊 分析此帖"</p>
-                    <p>• 点击按钮，脚本会自动滚动加载评论（最多500条）</p>
-                    <p>• 数据提取完成后，会自动跳转到本页面并显示分析结果</p>
-                  </div>
-                </details>
-
-                <details className="group">
-                  <summary className="cursor-pointer text-sm text-amber-800 hover:text-amber-900 flex items-center gap-1">
-                    <span className="transition-transform group-open:rotate-90">▶</span>
-                    常见问题排查（必看）
-                  </summary>
-                  <div className="mt-2 pl-4 text-xs text-amber-700 space-y-2">
-                    <div className="bg-red-50 p-2 rounded border border-red-100">
-                      <p className="font-medium text-red-800">❌ 安装后看不到"📊 分析此帖"按钮？</p>
-                      <ul className="list-disc list-inside mt-1 space-y-1">
-                        <li>确认安装的是 Tampermonkey 而不是其他脚本管理器</li>
-                        <li>检查 Tampermonkey 扩展是否<strong>已启用</strong>（图标是彩色不是灰色）</li>
-                        <li>必须在小红书<strong>帖子详情页</strong>（URL包含 /explore/）才能看到按钮</li>
-                        <li>刷新页面（按 F5 或 Ctrl+R）</li>
-                        <li>按 F12 打开控制台，看是否有红色报错信息</li>
-                      </ul>
-                    </div>
-                    <div className="bg-yellow-50 p-2 rounded border border-yellow-100">
-                      <p className="font-medium text-yellow-800">⚠️ 网页版小红书打不开？</p>
-                      <ul className="list-disc list-inside mt-1 space-y-1">
-                        <li>小红书网页版需要<strong>登录账号</strong>才能访问</li>
-                        <li>在 xiaohongshu.com 用手机扫码或验证码登录</li>
-                        <li>登录后才能看到帖子内容，脚本才能工作</li>
-                      </ul>
-                    </div>
-                    <p>• <strong>按钮点击没反应？</strong> 确保在帖子详情页（能看到完整帖子内容）</p>
-                    <p>• <strong>提取的评论太少？</strong> 脚本需要自动滚动加载，耐心等待10-20秒</p>
-                    <p>• <strong>如何卸载脚本？</strong> 点击 Tampermonkey 图标 → 找到脚本 → 点击垃圾桶图标</p>
-                  </div>
-                </details>
+              <p className="text-sm font-medium text-amber-900 mb-2">步骤1：安装 Tampermonkey 扩展</p>
+              <div className="text-xs text-amber-700 space-y-1">
+                <p>• Chrome/Edge 用户：<a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">点击安装 Tampermonkey</a></p>
+                <p>• Safari 用户：Mac App Store 搜索"Tampermonkey"安装</p>
+                <p>• 安装成功后，浏览器右上角会出现一个黑色/彩色的圆形图标</p>
               </div>
             </div>
 
-            {/* 方式2 简要说明 */}
+            <div className="bg-white rounded-lg p-3 mb-3 border border-amber-100">
+              <p className="text-sm font-medium text-amber-900 mb-2">步骤2：安装数据提取脚本</p>
+              <div className="text-xs text-amber-700 space-y-1">
+                <p>
+                  • <strong>点击下方直接安装：</strong>
+                  <a
+                    href="https://github.com/CenterTea/xhs-analytics/raw/main/public/xhs-extractor.user.js"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-600 hover:underline font-medium"
+                  >
+                    安装小红书数据提取脚本
+                  </a>
+                </p>
+                <p>• 浏览器会跳转到 Tampermonkey 的安装确认页面</p>
+                <p>• 点击页面上的"安装"按钮（绿色按钮）</p>
+                <p className="text-red-600 font-medium">⚠️ 重要：安装后请检查 Tampermonkey 扩展权限，确保"在所有网站上运行"已开启</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-3 mb-3 border border-amber-100">
+              <p className="text-sm font-medium text-amber-900 mb-2">步骤3：使用脚本提取数据</p>
+              <div className="text-xs text-amber-700 space-y-1">
+                <p>• 打开任意小红书帖子页面（如 xiaohongshu.com/explore/xxxxx）</p>
+                <p>• 等待页面完全加载（约2-3秒）</p>
+                <p>• 页面右上角会出现红色按钮"📊 分析此帖"</p>
+                <p>• 点击按钮，脚本会自动滚动加载评论（最多500条）</p>
+                <p>• 数据提取完成后，会自动跳转到本页面并显示分析结果</p>
+              </div>
+            </div>
+
             <div className="bg-white rounded-lg p-3 border border-amber-100">
-              <p className="text-sm font-medium text-amber-900 mb-1">方式2：手动粘贴 HTML 源码</p>
-              <p className="text-xs text-amber-700">在小红书帖子页面右键「查看网页源代码」→ 全选(Ctrl+A) → 复制(Ctrl+C) → 点击下方"方式2"标签粘贴</p>
+              <p className="text-sm font-medium text-amber-900 mb-2">常见问题排查</p>
+              <div className="text-xs text-amber-700 space-y-2">
+                <div className="bg-red-50 p-2 rounded border border-red-100">
+                  <p className="font-medium text-red-800">❌ 安装后看不到"📊 分析此帖"按钮？</p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>确认安装的是 Tampermonkey 而不是其他脚本管理器</li>
+                    <li>检查 Tampermonkey 扩展是否<strong>已启用</strong>（图标是彩色不是灰色）</li>
+                    <li>必须在小红书<strong>帖子详情页</strong>（URL包含 /explore/）才能看到按钮</li>
+                    <li>刷新页面（按 F5 或 Ctrl+R）</li>
+                    <li>按 F12 打开控制台，看是否有红色报错信息</li>
+                  </ul>
+                </div>
+                <div className="bg-yellow-50 p-2 rounded border border-yellow-100">
+                  <p className="font-medium text-yellow-800">⚠️ 网页版小红书打不开？</p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>小红书网页版需要<strong>登录账号</strong>才能访问</li>
+                    <li>在 xiaohongshu.com 用手机扫码或验证码登录</li>
+                    <li>登录后才能看到帖子内容，脚本才能工作</li>
+                  </ul>
+                </div>
+                <p>• <strong>按钮点击没反应？</strong> 确保在帖子详情页（能看到完整帖子内容）</p>
+                <p>• <strong>提取的评论太少？</strong> 脚本需要自动滚动加载，耐心等待10-20秒</p>
+                <p>• <strong>如何卸载脚本？</strong> 点击 Tampermonkey 图标 → 找到脚本 → 点击垃圾桶图标</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 输入模式切换 */}
-      <div className="flex gap-4 mb-4">
-        <button
-          onClick={() => setInputMode('url')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            inputMode === 'url'
-              ? 'bg-red-500 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          方式1: 帖子链接
-        </button>
-        <button
-          onClick={() => setInputMode('html')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            inputMode === 'html'
-              ? 'bg-red-500 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          方式2: 粘贴HTML源码
-        </button>
-      </div>
-
-      {/* 输入区域 */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-        {inputMode === 'url' ? (
-          <>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              小红书帖子链接
-            </label>
-            <input
-              type="text"
-              value={postUrl}
-              onChange={(e) => setPostUrl(e.target.value)}
-              placeholder="https://www.xiaohongshu.com/explore/..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-            />
-            <p className="text-xs text-gray-400 mt-2">
-              需要先安装浏览器插件才能自动提取
-            </p>
-          </>
-        ) : (
-          <>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              粘贴网页源代码（Ctrl+A 全选后复制）
-            </label>
-            <textarea
-              value={htmlContent}
-              onChange={(e) => setHtmlContent(e.target.value)}
-              placeholder="右键页面 → 查看网页源代码 → 全选(Ctrl+A) → 复制(Ctrl+C) → 粘贴到这里..."
-              className="w-full h-40 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none font-mono text-xs"
-            />
-            <p className="text-xs text-gray-400 mt-2">
-              提示：在小红书帖子页面右键 → 查看网页源代码 → 全选复制
-            </p>
-          </>
-        )}
-
-        <button
-          onClick={handleAnalyze}
-          disabled={analyzing || (inputMode === 'url' ? !postUrl.trim() : !htmlContent.trim())}
-          className="mt-4 w-full px-6 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {analyzing ? '分析中...' : '开始分析'}
-        </button>
+      {/* 等待数据提示 */}
+      <div className="bg-blue-50 rounded-xl border border-blue-200 p-6 mb-8 text-center">
+        <div className="text-4xl mb-3">⏳</div>
+        <h3 className="text-lg font-medium text-blue-900 mb-2">等待数据提取</h3>
+        <p className="text-sm text-blue-700">
+          请按照上方步骤安装 Tampermonkey 脚本，然后在小红书帖子页面点击"📊 分析此帖"按钮。<br/>
+          数据会自动发送到本页面进行分析。
+        </p>
       </div>
 
       {/* 已提取的数据显示 */}
@@ -801,9 +516,19 @@ export default function PostAnalysisPage() {
                 </div>
               </div>
             </div>
-            <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
+            <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100 mb-3">
               {result.commentQuality.analysis}
             </p>
+
+            {/* 无效评论说明 */}
+            <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
+              <h4 className="text-xs font-semibold text-amber-900 mb-2">📋 什么是有/无效评论？</h4>
+              <div className="text-xs text-amber-800 space-y-1">
+                <p><strong>有效评论：</strong>包含实质性内容的评论，如表达观点、提问、分享经验、给出建议等。例如"这个产品的使用感怎么样？""我也买了同款，确实不错""建议搭配什么颜色？"</p>
+                <p><strong>无效评论：</strong>没有信息价值的评论，包括：①只@好友没有实质内容；②纯表情符号（如😂👍❤️）；③简单敷衍（如"666""来了""第一""沙发"）；④重复刷评；⑤广告引流评论。</p>
+                <p className="mt-1">无效评论过多会影响帖子权重，降低推荐量。建议通过引导提问、置顶优质评论等方式提升有效评论比例。</p>
+              </div>
+            </div>
           </div>
 
           {/* 重新分析按钮 */}
@@ -812,8 +537,6 @@ export default function PostAnalysisPage() {
               onClick={() => {
                 setResult(null)
                 setExtractedData(null)
-                setPostUrl('')
-                setHtmlContent('')
               }}
               className="px-6 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
             >
