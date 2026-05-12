@@ -51,7 +51,13 @@ export default function FunnelChart({ post }: FunnelChartProps) {
     },
   ]
 
-  // 所有条形长度一致（100%），重点展示转化率数据而非绝对数值差异
+  // 以曝光量为基准（100%），其他层按比例显示
+  const baseValue = post.impressions || 1
+  const getRelativeWidth = (value: number) => {
+    const pct = (value / baseValue) * 100
+    // 最小显示3%，不然太小的数值看不见
+    return Math.max(pct, 3)
+  }
 
   return (
     <div className="space-y-4">
@@ -70,13 +76,14 @@ export default function FunnelChart({ post }: FunnelChartProps) {
         </div>
       </div>
 
-      {/* 漏斗图 - 各层长度一致，重点展示转化率 */}
+      {/* 漏斗图 - 以曝光量为100%基准 */}
       <div className="space-y-3">
         {steps.map((step, i) => {
           const displayVal =
             step.value >= 10000
               ? `${(step.value / 10000).toFixed(1)}万`
               : step.value.toLocaleString()
+          const barWidth = getRelativeWidth(step.value)
 
           return (
             <div key={step.label} className="flex items-center gap-3">
@@ -84,12 +91,17 @@ export default function FunnelChart({ post }: FunnelChartProps) {
                 <p className="text-sm font-medium text-gray-700">{step.label}</p>
               </div>
               <div className="flex-1 relative">
-                {/* 条形长度一致（100%） */}
-                <div className={`h-10 ${step.color} rounded-lg flex items-center justify-between px-3 transition-all duration-700`}>
-                  <span className="text-white/80 text-xs">{step.label}</span>
-                  <span className="text-white text-sm font-semibold whitespace-nowrap">
-                    {displayVal}
-                  </span>
+                {/* 背景条（100%基准） */}
+                <div className="h-10 bg-gray-100 rounded-lg relative overflow-hidden">
+                  {/* 实际数据条 - 相对于曝光量的比例 */}
+                  <div
+                    className={`absolute left-0 top-0 h-full ${step.color} flex items-center justify-end pr-3 transition-all duration-700`}
+                    style={{ width: `${barWidth}%` }}
+                  >
+                    <span className="text-white text-sm font-semibold whitespace-nowrap">
+                      {displayVal}
+                    </span>
+                  </div>
                 </div>
               </div>
               <div className="w-28 shrink-0 text-left">
