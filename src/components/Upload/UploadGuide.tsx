@@ -19,23 +19,28 @@ export default function UploadGuide() {
             <div>
               <p className="font-medium text-gray-800">方法一：官方创作者平台导出</p>
               <ol className="list-decimal list-inside space-y-1 mt-1">
-                <li>电脑浏览器打开 creator.xiaohongshu.com</li>
+                <li>电脑浏览器打开 <code className="bg-gray-100 px-1 rounded">creator.xiaohongshu.com</code></li>
                 <li>用小红书 APP 扫码登录</li>
                 <li>进入「数据看板」→「内容分析」</li>
                 <li>点击右上角「导出报表」，选 CSV 格式下载</li>
               </ol>
-              <p className="text-xs text-gray-400 mt-1">
-                海外用户也可以用：xiaohongshu.com（主站网页版）
-              </p>
             </div>
             <div>
               <p className="font-medium text-gray-800">方法二：xhs-creator-export 工具（推荐，导出的数据更全）</p>
               <ol className="list-decimal list-inside space-y-1 mt-1">
-                <li>访问 github.com/iSk2y/xhs-creator-export</li>
+                <li>访问 <code className="bg-gray-100 px-1 rounded">github.com/iSk2y/xhs-creator-export</code></li>
                 <li>安装浏览器插件（支持 Chrome / Edge）</li>
                 <li>登录小红书创作平台后，点插件一键导出</li>
                 <li>导出的字段更全——封面点击率、平均观看时长这些官方导出没有的它都有</li>
               </ol>
+            </div>
+            <div className="bg-blue-50 rounded-lg p-3">
+              <p className="font-medium text-blue-800 text-xs mb-1">海外用户（REDnote）</p>
+              <p className="text-xs text-blue-600">
+                自 2026 年 3 月起，小红书海外版已独立为 <strong>REDnote</strong>，数据与国内版分离。
+                海外创作者请访问 <code className="bg-blue-100 px-1 rounded">rednote.com</code>，
+                在创作者中心导出数据。注意：海外版与国内版数据不互通。
+              </p>
             </div>
           </div>
         </div>
