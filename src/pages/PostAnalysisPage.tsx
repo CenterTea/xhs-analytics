@@ -318,8 +318,6 @@ export default function PostAnalysisPage() {
               <p className="text-sm text-green-800 font-medium">{extractedData.title}</p>
               <div className="flex gap-4 mt-2 text-xs text-green-700">
                 <span>👤 {extractedData.author || '未知作者'}</span>
-                <span>⭐ {extractedData.collects || 0}</span>
-                <span>💬 {extractedData.comments || 0}</span>
               </div>
             </div>
           </div>
@@ -359,16 +357,8 @@ export default function PostAnalysisPage() {
           {/* 基础数据 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 帖子数据</h2>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">{extractedData?.collects || 0}</p>
-                <p className="text-xs text-gray-500">收藏</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">{extractedData?.comments || 0}</p>
-                <p className="text-xs text-gray-500">评论</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
+            <div className="flex justify-center">
+              <div className="bg-gray-50 rounded-lg p-4 text-center w-32">
                 <p className="text-2xl font-bold text-gray-900">{extractedData?.shares || 0}</p>
                 <p className="text-xs text-gray-500">分享</p>
               </div>
