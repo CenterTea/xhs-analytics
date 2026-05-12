@@ -189,8 +189,10 @@
         }
     }
 
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    // 随机延迟函数，避免触发反爬虫机制
+    function sleep(minMs, maxMs) {
+        const delay = maxMs ? Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs : minMs;
+        return new Promise(resolve => setTimeout(resolve, delay));
     }
 
     function extractTitle() {
@@ -483,12 +485,12 @@
                 if (shouldClick && el.offsetParent !== null) {
                     // 滚动到按钮位置确保可见
                     el.scrollIntoView({ behavior: 'instant', block: 'center' });
-                    await sleep(100);
+                    await sleep(100, 300);
 
                     el.click();
                     expandCount++;
                     foundInRound++;
-                    await sleep(300);
+                    await sleep(300, 600);
                 }
             }
 
@@ -496,7 +498,7 @@
 
             // 如果没有找到新的按钮，等待一下再检查（可能有延迟加载的）
             if (foundInRound === 0) {
-                await sleep(500);
+                await sleep(500, 1000);
                 // 再检查一次，如果还是没有就退出
                 const remainingBtns = Array.from(document.querySelectorAll('button, div, span, a, p'))
                     .filter(el => {
@@ -510,7 +512,7 @@
         console.log('[小红书数据提取器] 总共展开了', expandCount, '个楼中楼');
 
         // 等待所有展开的内容加载完成
-        await sleep(1000);
+        await sleep(1500, 2500);
 
         // 滚动加载更多评论（最多滚动15次）
         console.log('[小红书数据提取器] 开始滚动加载评论...');
@@ -522,7 +524,7 @@
                 // 滚动页面
                 window.scrollTo(0, document.body.scrollHeight);
             }
-            await sleep(800);
+            await sleep(1000, 2000);
 
             // 尝试点击"加载更多"按钮
             const loadMoreBtns = document.querySelectorAll('button, div, span');
@@ -531,7 +533,7 @@
                 if (text === '加载更多' || text === '查看更多评论' || text === '展开更多') {
                     if (btn.offsetParent !== null) {
                         btn.click();
-                        await sleep(400);
+                        await sleep(400, 800);
                     }
                 }
             }
