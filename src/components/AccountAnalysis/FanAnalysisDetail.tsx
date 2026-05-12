@@ -141,6 +141,17 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
           color={fanValue.score > 70 ? 'bg-green-500' : fanValue.score > 40 ? 'bg-yellow-500' : 'bg-red-500'}
         />
         <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">{fanValue.text}</p>
+
+        {/* 得分依据 */}
+        <div className="mt-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
+          <h4 className="text-xs font-semibold text-gray-700 mb-2">📊 得分计算方式</h4>
+          <div className="space-y-1 text-xs text-gray-600">
+            <p>得分 = (互动率得分 × 50% + 涨粉率得分 × 50%) × 100</p>
+            <p>• 互动率得分 = 你的平均互动率 ÷ 同类均值 ({(benchmark.avgInteractionRate * 100).toFixed(1)}%)</p>
+            <p>• 涨粉率得分 = 你的平均涨粉率 ÷ 同类均值 ({(benchmark.avgFollowConversionRate * 100).toFixed(2)}%)</p>
+            <p className="text-gray-400 mt-1">高分标准：{'>'}120分（远超同类），80-120分（持平），{'<'}80分（低于同类）</p>
+          </div>
+        </div>
       </Card>
 
       <Card>
@@ -155,6 +166,18 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
           color={contentMatch.match > 60 ? 'bg-green-500' : contentMatch.match > 30 ? 'bg-yellow-500' : 'bg-red-500'}
         />
         <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">{contentMatch.text}</p>
+
+        {/* 得分依据 */}
+        <div className="mt-3 bg-gray-50 rounded-lg p-3 border border-gray-200">
+          <h4 className="text-xs font-semibold text-gray-700 mb-2">📊 得分计算方式</h4>
+          <div className="space-y-1 text-xs text-gray-600">
+            <p>匹配度 = 核心话题帖子数 ÷ 总帖子数 × 100</p>
+            <p>• 识别你所有帖子中出现频率最高的话题作为核心话题</p>
+            <p>• 计算包含该话题的帖子占比</p>
+            <p className="text-gray-400 mt-1">高分标准：{'>'}60%（高度聚焦），35-60%（有一定聚焦），{'<'}35%（话题分散）</p>
+          </div>
+        </div>
+
         <div className="mt-3 bg-blue-50 rounded-lg p-3">
           <p className="text-xs text-blue-700">
             <strong>为什么这个指标重要？</strong> 匹配度高 = 吸引的粉丝与内容定位一致 = 变现时粉丝不会觉得"你怎么变了"。匹配度低可能出现"虚假繁荣"——粉丝数看着多但推荐/带货时转化率很低，因为粉丝根本不是冲着你这个方向来的。

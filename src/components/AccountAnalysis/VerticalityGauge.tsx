@@ -9,6 +9,9 @@ interface VerticalityData {
 }
 
 export default function VerticalityGauge({ data }: { data: VerticalityData }) {
+  const topWeight = data.mainTopics[0]?.weight ?? 0
+  const top2Weight = data.mainTopics.slice(0, 2).reduce((s, t) => s + t.weight, 0)
+
   return (
     <Card>
       <h2 className="text-lg font-semibold text-gray-900 mb-4">内容垂直度</h2>
@@ -25,6 +28,18 @@ export default function VerticalityGauge({ data }: { data: VerticalityData }) {
           />
           <p className="text-sm text-gray-600 mt-3">{data.assessment}</p>
           <p className="text-sm text-gray-500 mt-2 italic">{data.suggestion}</p>
+
+          {/* 得分依据 */}
+          <div className="mt-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <h4 className="text-xs font-semibold text-gray-700 mb-2">📊 得分依据</h4>
+            <div className="space-y-1 text-xs text-gray-600">
+              <p>• 得分 = TOP1话题占比 × 30 + TOP2话题占比 × 70</p>
+              <p>• 你的TOP1话题占比: {(topWeight * 100).toFixed(1)}%</p>
+              <p>• TOP2话题合计占比: {(top2Weight * 100).toFixed(1)}%</p>
+              <p>• 计算: {(topWeight * 30).toFixed(1)} + {(top2Weight * 70).toFixed(1)} = {data.score}分</p>
+              <p className="text-gray-400 mt-1">高分标准：≥75分（内容高度聚焦），50-75分（有一定聚焦），&lt;50分（话题分散）</p>
+            </div>
+          </div>
         </div>
         <div>
           <h4 className="text-sm font-medium text-gray-700 mb-3">主要话题分布</h4>
@@ -41,6 +56,9 @@ export default function VerticalityGauge({ data }: { data: VerticalityData }) {
               </div>
             ))}
           </div>
+          {data.mainTopics.length === 0 && (
+            <p className="text-sm text-gray-400 italic">暂无话题数据</p>
+          )}
         </div>
       </div>
     </Card>

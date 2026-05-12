@@ -48,6 +48,10 @@ export interface AccountStats {
   totalImpressions: number
   totalViews: number
   totalInteractions: number
+  totalLikes: number
+  totalSaves: number
+  totalComments: number
+  totalShares: number
   totalFollowers: number
   netFollowerGrowth: number
   avgCoverCTR: number

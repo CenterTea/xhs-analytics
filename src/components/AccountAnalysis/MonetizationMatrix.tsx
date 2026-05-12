@@ -30,6 +30,18 @@ export default function MonetizationMatrix({ data }: { data: MonetizationData })
             color={data.score >= 70 ? 'bg-green-500' : data.score >= 45 ? 'bg-yellow-500' : 'bg-gray-400'}
           />
           <p className="text-sm text-gray-600 mt-3">{data.readiness}</p>
+
+          {/* 得分依据 */}
+          <div className="mt-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <h4 className="text-xs font-semibold text-gray-700 mb-2">📊 得分计算方式</h4>
+            <div className="space-y-1 text-xs text-gray-600">
+              <p>变现潜力分 = 内容垂直度 × 40% + 粉丝粘性 × 30% + 互动率表现 × 30%</p>
+              <p>• 内容垂直度：聚焦度越高，品牌方越愿意合作</p>
+              <p>• 粉丝粘性：粉丝留存意愿决定长期变现能力</p>
+              <p>• 互动率表现：互动率 × 1000（封顶100分）</p>
+              <p className="text-gray-400 mt-1">分级标准：≥70分（可变现），45-70分（积累中），&lt;45分（先养号）</p>
+            </div>
+          </div>
         </div>
         <div>
           <h4 className="text-sm font-medium text-gray-700 mb-2">适合的变现方式</h4>

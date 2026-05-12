@@ -51,6 +51,10 @@ export function calculateAccountStats(posts: Post[]): AccountStats {
       totalImpressions: 0,
       totalViews: 0,
       totalInteractions: 0,
+      totalLikes: 0,
+      totalSaves: 0,
+      totalComments: 0,
+      totalShares: 0,
       totalFollowers: 0,
       netFollowerGrowth: 0,
       avgCoverCTR: 0,
@@ -70,10 +74,11 @@ export function calculateAccountStats(posts: Post[]): AccountStats {
   const totalPosts = posts.length
   const totalImpressions = posts.reduce((s, p) => s + p.impressions, 0)
   const totalViews = posts.reduce((s, p) => s + p.views, 0)
-  const totalInteractions = posts.reduce(
-    (s, p) => s + p.likes + p.saves + p.comments + p.shares,
-    0
-  )
+  const totalLikes = posts.reduce((s, p) => s + p.likes, 0)
+  const totalSaves = posts.reduce((s, p) => s + p.saves, 0)
+  const totalComments = posts.reduce((s, p) => s + p.comments, 0)
+  const totalShares = posts.reduce((s, p) => s + p.shares, 0)
+  const totalInteractions = totalLikes + totalSaves + totalComments + totalShares
   const netFollowerGrowth = posts.reduce((s, p) => s + p.newFollowers, 0)
   const totalFollowers = 0 // 需要从账号数据获取，暂时留空
 
@@ -104,6 +109,10 @@ export function calculateAccountStats(posts: Post[]): AccountStats {
     totalImpressions,
     totalViews,
     totalInteractions,
+    totalLikes,
+    totalSaves,
+    totalComments,
+    totalShares,
     totalFollowers,
     netFollowerGrowth,
     avgCoverCTR,

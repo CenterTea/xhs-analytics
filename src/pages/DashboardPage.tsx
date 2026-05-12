@@ -6,18 +6,10 @@ import TrendChart from '../components/Dashboard/TrendChart'
 import PostRanking from '../components/Dashboard/PostRanking'
 import FunnelChart from '../components/Funnel/FunnelChart'
 import FunnelLayer from '../components/Funnel/FunnelLayer'
+import InteractionAnalysis from '../components/Funnel/InteractionAnalysis'
 import { Link } from 'react-router-dom'
 import { getBenchmark } from '../utils/benchmark'
 import type { Post } from '../types'
-
-function pctRank(yours: number, benchmark: number): string {
-  if (benchmark <= 0) return ''
-  const ratio = yours / benchmark
-  if (ratio >= 1.3) return '超过 70% 同类账号'
-  if (ratio >= 1.0) return '超过 50% 同类账号'
-  if (ratio >= 0.7) return '超过 30% 同类账号'
-  return '低于多数同类账号'
-}
 
 // 计算总量数据的百分位（基于平均单帖数据推算）
 function calculateTotalPercentile(totalValue: number, postCount: number, benchmarkAvg: number): string {
@@ -56,6 +48,10 @@ export default function DashboardPage() {
 
   const avgImpressions = Math.round(posts.reduce((s, p) => s + p.impressions, 0) / n)
   const avgViews = Math.round(posts.reduce((s, p) => s + p.views, 0) / n)
+  const avgLikes = Math.round(posts.reduce((s, p) => s + p.likes, 0) / n)
+  const avgSaves = Math.round(posts.reduce((s, p) => s + p.saves, 0) / n)
+  const avgComments = Math.round(posts.reduce((s, p) => s + p.comments, 0) / n)
+  const avgShares = Math.round(posts.reduce((s, p) => s + p.shares, 0) / n)
   const avgInteractions = Math.round(
     posts.reduce((s, p) => s + p.likes + p.saves + p.comments + p.shares, 0) / n
   )
@@ -93,36 +89,40 @@ export default function DashboardPage() {
             percentile={calculateTotalPercentile(accountStats.totalViews, n, benchmark.avgCoverCTR * 5000)}
           />
           <MetricCard
+            label="总点赞"
+            value={accountStats.totalLikes}
+            avgPerPost={avgLikes.toLocaleString()}
+            percentile={calculateTotalPercentile(accountStats.totalLikes, n, benchmark.avgLikeRate * 1000)}
+          />
+          <MetricCard
+            label="总收藏"
+            value={accountStats.totalSaves}
+            avgPerPost={avgSaves.toLocaleString()}
+            percentile={calculateTotalPercentile(accountStats.totalSaves, n, benchmark.avgSaveRate * 500)}
+          />
+          <MetricCard
+            label="总评论"
+            value={accountStats.totalComments}
+            avgPerPost={avgComments.toLocaleString()}
+            percentile={calculateTotalPercentile(accountStats.totalComments, n, benchmark.avgCommentRate * 200)}
+          />
+          <MetricCard
+            label="总分享"
+            value={accountStats.totalShares}
+            avgPerPost={avgShares.toLocaleString()}
+            percentile={calculateTotalPercentile(accountStats.totalShares, n, benchmark.avgShareRate * 100)}
+          />
+          <MetricCard
             label="总互动"
             value={accountStats.totalInteractions}
             avgPerPost={avgInteractions.toLocaleString()}
-            percentile={calculateTotalPercentile(accountStats.totalInteractions, n, benchmark.avgInteractionRate * 1000)}
+            percentile={calculateTotalPercentile(accountStats.totalInteractions, n, benchmark.avgInteractionRate * 1500)}
           />
           <MetricCard
             label="净增粉丝"
             value={accountStats.netFollowerGrowth}
             avgPerPost={avgFollowers.toLocaleString()}
             percentile={calculateTotalPercentile(accountStats.netFollowerGrowth, n, benchmark.avgFollowConversionRate * 100)}
-          />
-          <MetricCard
-            label="平均封面点击率"
-            value={`${(accountStats.avgCoverCTR * 100).toFixed(1)}%`}
-            percentile={pctRank(accountStats.avgCoverCTR, benchmark.avgCoverCTR)}
-          />
-          <MetricCard
-            label="平均互动率"
-            value={`${(accountStats.avgInteractionRate * 100).toFixed(1)}%`}
-            percentile={pctRank(accountStats.avgInteractionRate, benchmark.avgInteractionRate)}
-          />
-          <MetricCard
-            label="平均点赞率"
-            value={`${(accountStats.avgLikeRate * 100).toFixed(1)}%`}
-            percentile={pctRank(accountStats.avgLikeRate, benchmark.avgLikeRate)}
-          />
-          <MetricCard
-            label="平均涨粉率"
-            value={`${(accountStats.avgFollowConversionRate * 100).toFixed(2)}%`}
-            percentile={pctRank(accountStats.avgFollowConversionRate, benchmark.avgFollowConversionRate)}
           />
         </div>
       )}
@@ -322,6 +322,12 @@ export default function DashboardPage() {
               diagnosis={diagnosis?.funnelDiagnosis[2]}
               layerType="conversion"
             />
+          </div>
+
+          {/* 互动深度分析 - 新增 */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">互动深度分析</h3>
+            <InteractionAnalysis post={selectedPost} />
           </div>
 
           {/* 专业术语解释 */}

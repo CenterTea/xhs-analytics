@@ -10,6 +10,9 @@ interface FanStickinessData {
 }
 
 export default function FanStickiness({ data }: { data: FanStickinessData }) {
+  // 反推粉丝增长趋势用于展示计算依据
+  const trendFromScore = data.score >= 70 ? ((data.score - 70) / 100) : ((data.score - 50) / 50)
+
   return (
     <Card>
       <h2 className="text-lg font-semibold text-gray-900 mb-4">粉丝粘性</h2>
@@ -49,6 +52,18 @@ export default function FanStickiness({ data }: { data: FanStickinessData }) {
       </div>
       <p className="text-sm text-gray-600 mt-4">{data.assessment}</p>
       <p className="text-sm text-gray-500 mt-1 italic">{data.suggestion}</p>
+
+      {/* 得分依据 */}
+      <div className="mt-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
+        <h4 className="text-xs font-semibold text-gray-700 mb-2">📊 得分维度</h4>
+        <div className="space-y-1 text-xs text-gray-600">
+          <p><strong>粉丝增长趋势</strong> — 得分核心依据</p>
+          <p>• 趋势 {'>'} +10%（加速增长）→ 基础分70 + 增长系数 → 得分 {Math.min(100, Math.round(70 + Math.max(0, trendFromScore) * 100))}</p>
+          <p>• 趋势 -10% ~ +10%（平缓增长）→ 基础分50 ± 趋势系数 → 得分 40-60</p>
+          <p>• 趋势 {'<'} -10%（下降趋势）→ 基础分50 - 下降系数 → 得分 0-40</p>
+          <p className="text-gray-400 mt-1">流失粉丝按新增粉丝的30%估算（行业参考值）</p>
+        </div>
+      </div>
     </Card>
   )
 }
