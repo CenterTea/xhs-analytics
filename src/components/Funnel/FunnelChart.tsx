@@ -51,12 +51,7 @@ export default function FunnelChart({ post }: FunnelChartProps) {
     },
   ]
 
-  const maxVal = Math.max(...steps.map((s) => s.value), 1)
-
-  // 计算各层转化率相对于100%的位置
-  const getRelativeWidth = (value: number) => {
-    return (value / maxVal) * 100
-  }
+  // 所有条形长度一致（100%），重点展示转化率数据而非绝对数值差异
 
   return (
     <div className="space-y-4">
@@ -75,10 +70,9 @@ export default function FunnelChart({ post }: FunnelChartProps) {
         </div>
       </div>
 
-      {/* 漏斗图 */}
+      {/* 漏斗图 - 各层长度一致，重点展示转化率 */}
       <div className="space-y-3">
         {steps.map((step, i) => {
-          const userWidth = getRelativeWidth(step.value)
           const displayVal =
             step.value >= 10000
               ? `${(step.value / 10000).toFixed(1)}万`
@@ -90,17 +84,12 @@ export default function FunnelChart({ post }: FunnelChartProps) {
                 <p className="text-sm font-medium text-gray-700">{step.label}</p>
               </div>
               <div className="flex-1 relative">
-                {/* 背景条（100%基准） */}
-                <div className="h-10 bg-gray-100 rounded-lg relative overflow-hidden">
-                  {/* 用户数据条 */}
-                  <div
-                    className={`absolute left-0 top-0 h-full ${step.color} flex items-center justify-end pr-3 transition-all duration-700`}
-                    style={{ width: `${Math.max(userWidth, 3)}%` }}
-                  >
-                    <span className="text-white text-sm font-semibold whitespace-nowrap">
-                      {displayVal}
-                    </span>
-                  </div>
+                {/* 条形长度一致（100%） */}
+                <div className={`h-10 ${step.color} rounded-lg flex items-center justify-between px-3 transition-all duration-700`}>
+                  <span className="text-white/80 text-xs">{step.label}</span>
+                  <span className="text-white text-sm font-semibold whitespace-nowrap">
+                    {displayVal}
+                  </span>
                 </div>
               </div>
               <div className="w-28 shrink-0 text-left">
