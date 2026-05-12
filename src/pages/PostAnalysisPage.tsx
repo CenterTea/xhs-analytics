@@ -267,7 +267,10 @@ export default function PostAnalysisPage() {
                 </p>
                 <p>• 浏览器会跳转到 Tampermonkey 的安装确认页面</p>
                 <p>• 点击页面上的"安装"按钮（绿色按钮）</p>
-                <p className="text-red-600 font-medium">⚠️ 重要：安装后请检查 Tampermonkey 扩展权限，确保"在所有网站上运行"已开启</p>
+                <div className="bg-red-50 p-2 rounded border border-red-200 mt-2">
+                  <p className="text-red-700 font-medium">⚠️ 重要：开启插件权限</p>
+                  <p className="text-red-600 mt-1">安装完成后，点击浏览器右上角【三个点】-【扩展】-【管理扩展】- 找到 Tampermonkey - 点击【详细信息】- 打开【允许访问文件网址】和【在所有网站上】</p>
+                </div>
               </div>
             </div>
 
