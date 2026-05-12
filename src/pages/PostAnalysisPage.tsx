@@ -501,12 +501,29 @@ export default function PostAnalysisPage() {
                 <details className="group">
                   <summary className="cursor-pointer text-sm text-amber-800 hover:text-amber-900 flex items-center gap-1">
                     <span className="transition-transform group-open:rotate-90">▶</span>
-                    常见问题排查
+                    常见问题排查（必看）
                   </summary>
-                  <div className="mt-2 pl-4 text-xs text-amber-700 space-y-1">
-                    <p>• <strong>没有出现"分析此帖"按钮？</strong> 刷新页面，或检查 Tampermonkey 是否开启（图标应为彩色）</p>
-                    <p>• <strong>按钮点击没反应？</strong> 确保你在帖子详情页，不是列表页</p>
-                    <p>• <strong>提取的评论太少？</strong> 脚本需要滚动加载，耐心等待10-20秒</p>
+                  <div className="mt-2 pl-4 text-xs text-amber-700 space-y-2">
+                    <div className="bg-red-50 p-2 rounded border border-red-100">
+                      <p className="font-medium text-red-800">❌ 安装后看不到"📊 分析此帖"按钮？</p>
+                      <ul className="list-disc list-inside mt-1 space-y-1">
+                        <li>确认安装的是 Tampermonkey 而不是其他脚本管理器</li>
+                        <li>检查 Tampermonkey 扩展是否<strong>已启用</strong>（图标是彩色不是灰色）</li>
+                        <li>必须在小红书<strong>帖子详情页</strong>（URL包含 /explore/）才能看到按钮</li>
+                        <li>刷新页面（按 F5 或 Ctrl+R）</li>
+                        <li>按 F12 打开控制台，看是否有红色报错信息</li>
+                      </ul>
+                    </div>
+                    <div className="bg-yellow-50 p-2 rounded border border-yellow-100">
+                      <p className="font-medium text-yellow-800">⚠️ 网页版小红书打不开？</p>
+                      <ul className="list-disc list-inside mt-1 space-y-1">
+                        <li>小红书网页版需要<strong>登录账号</strong>才能访问</li>
+                        <li>在 xiaohongshu.com 用手机扫码或验证码登录</li>
+                        <li>登录后才能看到帖子内容，脚本才能工作</li>
+                      </ul>
+                    </div>
+                    <p>• <strong>按钮点击没反应？</strong> 确保在帖子详情页（能看到完整帖子内容）</p>
+                    <p>• <strong>提取的评论太少？</strong> 脚本需要自动滚动加载，耐心等待10-20秒</p>
                     <p>• <strong>如何卸载脚本？</strong> 点击 Tampermonkey 图标 → 找到脚本 → 点击垃圾桶图标</p>
                   </div>
                 </details>

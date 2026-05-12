@@ -1,40 +1,112 @@
 // ==UserScript==
 // @name         小红书帖子数据提取器
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  提取小红书帖子数据并发送到数据分析工具
 // @author       You
-// @match        https://www.xiaohongshu.com/explore/*
-// @match        https://www.xiaohongshu.com/user/profile/*
+// @match        https://www.xiaohongshu.com/*
+// @match        http://www.xiaohongshu.com/*
+// @match        https://xiaohongshu.com/*
 // @grant        GM_openInTab
 // @grant        GM_setClipboard
+// @run-at       document-end
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    // 创建浮动按钮
-    const button = document.createElement('div');
-    button.innerHTML = '📊 分析此帖';
-    button.style.cssText = `
-        position: fixed;
-        top: 100px;
-        right: 20px;
-        background: #ff2442;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 20px;
-        cursor: pointer;
-        z-index: 999999;
-        font-size: 14px;
-        font-weight: bold;
-        box-shadow: 0 2px 8px rgba(255, 36, 66, 0.3);
-        transition: all 0.3s;
-    `;
-    button.onmouseover = () => button.style.transform = 'scale(1.05)';
-    button.onmouseout = () => button.style.transform = 'scale(1)';
-    button.onclick = () => extractData().catch(console.error);
-    document.body.appendChild(button);
+    console.log('[小红书数据提取器] 脚本开始加载...');
+    console.log('[小红书数据提取器] 当前URL:', window.location.href);
+
+    // 检查是否在小红书网页版
+    if (!window.location.href.includes('xiaohongshu.com')) {
+        console.log('[小红书数据提取器] 非小红书页面，跳过加载');
+        return;
+    }
+
+    // 等待页面加载完成
+    function init() {
+        console.log('[小红书数据提取器] 初始化中...');
+
+        // 检查是否在帖子页面
+        const isPostPage = window.location.href.includes('/explore/') ||
+                           document.querySelector('h1') ||
+                           document.querySelector('[class*="note"]');
+
+        if (!isPostPage) {
+            console.log('[小红书数据提取器] 不是帖子详情页，不显示按钮');
+            return;
+        }
+
+        // 创建浮动按钮
+        createButton();
+        console.log('[小红书数据提取器] ✅ 按钮已创建');
+    }
+
+    function createButton() {
+        // 检查按钮是否已存在
+        if (document.getElementById('xhs-analyzer-btn')) {
+            console.log('[小红书数据提取器] 按钮已存在，跳过创建');
+            return;
+        }
+
+        const button = document.createElement('div');
+        button.id = 'xhs-analyzer-btn';
+        button.innerHTML = '📊 分析此帖';
+        button.style.cssText = `
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: #ff2442;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 2147483647;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(255, 36, 66, 0.3);
+            transition: all 0.3s;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        `;
+        button.onmouseover = () => button.style.transform = 'scale(1.05)';
+        button.onmouseout = () => button.style.transform = 'scale(1)';
+        button.onclick = () => extractData().catch(console.error);
+
+        // 尝试添加到body
+        if (document.body) {
+            document.body.appendChild(button);
+            console.log('[小红书数据提取器] 按钮已添加到body');
+        } else {
+            // 如果body还不存在，等待DOM加载
+            window.addEventListener('DOMContentLoaded', () => {
+                document.body.appendChild(button);
+                console.log('[小红书数据提取器] 按钮已添加到body (延迟)');
+            });
+        }
+    }
+
+    // 页面加载完成后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+    // 监听URL变化（SPA页面）
+    let lastUrl = location.href;
+    new MutationObserver(() => {
+        const url = location.href;
+        if (url !== lastUrl) {
+            lastUrl = url;
+            console.log('[小红书数据提取器] URL变化，重新初始化');
+            // 移除旧按钮
+            const oldBtn = document.getElementById('xhs-analyzer-btn');
+            if (oldBtn) oldBtn.remove();
+            // 延迟重新初始化
+            setTimeout(init, 1000);
+        }
+    }).observe(document, { subtree: true, childList: true });
 
     async function extractData() {
         try {
@@ -239,6 +311,4 @@
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
     }
-
-    console.log('✅ 小红书数据提取器已加载');
 })();
