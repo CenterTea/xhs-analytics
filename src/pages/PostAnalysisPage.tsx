@@ -233,22 +233,73 @@ export default function PostAnalysisPage() {
       <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 mb-6">
         <div className="flex items-start gap-3">
           <span className="text-xl">💡</span>
-          <div>
-            <h4 className="font-medium text-amber-900 mb-1">两种使用方式</h4>
-            <p className="text-sm text-amber-800">
-              <strong>方式1（推荐）：</strong>
-              <a
-                href="/xhs-analytics/xhs-extractor.user.js"
-                target="_blank"
-                className="text-red-600 hover:underline"
-              >
-                安装 Tampermonkey 脚本
-              </a>
-              ，在小红书页面点击"📊 分析此帖"按钮一键提取
-            </p>
-            <p className="text-sm text-amber-800 mt-1">
-              <strong>方式2：</strong>在小红书帖子页面右键「查看网页源代码」→ 全选复制 → 粘贴到下方输入框
-            </p>
+          <div className="flex-1">
+            <h4 className="font-medium text-amber-900 mb-2">两种使用方式</h4>
+
+            {/* 方式1 详细教程 */}
+            <div className="bg-white rounded-lg p-3 mb-3 border border-amber-100">
+              <p className="text-sm font-medium text-amber-900 mb-2">方式1（推荐）：Tampermonkey 脚本一键提取</p>
+
+              <div className="space-y-2">
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-amber-800 hover:text-amber-900 flex items-center gap-1">
+                    <span className="transition-transform group-open:rotate-90">▶</span>
+                    步骤1：安装 Tampermonkey 扩展
+                  </summary>
+                  <div className="mt-2 pl-4 text-xs text-amber-700 space-y-1">
+                    <p>• Chrome/Edge 用户：访问 Chrome 网上应用店，搜索"Tampermonkey"，点击"添加至 Chrome"</p>
+                    <p>• Safari 用户：Mac App Store 搜索"Tampermonkey"安装</p>
+                    <p>• 安装成功后，浏览器右上角会出现一个黑色/彩色的圆形图标</p>
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-amber-800 hover:text-amber-900 flex items-center gap-1">
+                    <span className="transition-transform group-open:rotate-90">▶</span>
+                    步骤2：安装数据提取脚本
+                  </summary>
+                  <div className="mt-2 pl-4 text-xs text-amber-700 space-y-1">
+                    <p>• 点击下方链接：<a href="/xhs-analytics/xhs-extractor.user.js" target="_blank" className="text-red-600 hover:underline font-medium">安装小红书数据提取脚本</a></p>
+                    <p>• 浏览器会跳转到 Tampermonkey 的安装确认页面</p>
+                    <p>• 点击页面上的"安装"按钮（绿色按钮）</p>
+                    <p>• 安装成功后，Tampermonkey 图标会显示数字"1"，表示有1个脚本在运行</p>
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-amber-800 hover:text-amber-900 flex items-center gap-1">
+                    <span className="transition-transform group-open:rotate-90">▶</span>
+                    步骤3：使用脚本提取数据
+                  </summary>
+                  <div className="mt-2 pl-4 text-xs text-amber-700 space-y-1">
+                    <p>• 打开任意小红书帖子页面（如 xiaohongshu.com/explore/xxxxx）</p>
+                    <p>• 等待页面完全加载（约2-3秒）</p>
+                    <p>• 页面右上角会出现红色按钮"📊 分析此帖"</p>
+                    <p>• 点击按钮，脚本会自动滚动加载评论（最多500条）</p>
+                    <p>• 数据提取完成后，会自动跳转到本页面并显示分析结果</p>
+                  </div>
+                </details>
+
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-amber-800 hover:text-amber-900 flex items-center gap-1">
+                    <span className="transition-transform group-open:rotate-90">▶</span>
+                    常见问题排查
+                  </summary>
+                  <div className="mt-2 pl-4 text-xs text-amber-700 space-y-1">
+                    <p>• <strong>没有出现"分析此帖"按钮？</strong> 刷新页面，或检查 Tampermonkey 是否开启（图标应为彩色）</p>
+                    <p>• <strong>按钮点击没反应？</strong> 确保你在帖子详情页，不是列表页</p>
+                    <p>• <strong>提取的评论太少？</strong> 脚本需要滚动加载，耐心等待10-20秒</p>
+                    <p>• <strong>如何卸载脚本？</strong> 点击 Tampermonkey 图标 → 找到脚本 → 点击垃圾桶图标</p>
+                  </div>
+                </details>
+              </div>
+            </div>
+
+            {/* 方式2 简要说明 */}
+            <div className="bg-white rounded-lg p-3 border border-amber-100">
+              <p className="text-sm font-medium text-amber-900 mb-1">方式2：手动粘贴 HTML 源码</p>
+              <p className="text-xs text-amber-700">在小红书帖子页面右键「查看网页源代码」→ 全选(Ctrl+A) → 复制(Ctrl+C) → 点击下方"方式2"标签粘贴</p>
+            </div>
           </div>
         </div>
       </div>
