@@ -4,7 +4,7 @@ import { calculatePostRates } from './calculate'
 
 /**
  * 解析上传的 CSV 或 Excel 文件
- * 兼容小红书千帆后台导出 和 xhs-creator-export 工具导出两种格式
+ * 兼容小红书创作者平台导出 和 xhs-creator-export 工具导出两种格式
  */
 export async function parseFile(file: File): Promise<Post[]> {
   const buffer = await file.arrayBuffer()

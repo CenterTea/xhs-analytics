@@ -14,15 +14,15 @@
 
 ## 如何使用
 
-1. 打开 [工具网站](https://你的用户名.github.io/xhs-analytics/)
-2. 上传从小红书千帆后台或 xhs-creator-export 工具导出的 CSV/Excel 文件
+1. 打开 [工具网站](https://centertea.github.io/xhs-analytics/)
+2. 上传从小红书创作者平台或 xhs-creator-export 工具导出的 CSV/Excel 文件
 3. 查看分析结果
 4. 也可以直接点击「加载示例数据」体验功能
 
 ### 如何导出数据？
 
-**方法一：官方千帆后台**
-1. 浏览器打开 qianfan.xiaohongshu.com
+**方法一：官方创作者平台**
+1. 浏览器打开 creator.xiaohongshu.com
 2. 用小红书 APP 扫码登录
 3. 进入「数据看板」→「内容分析」，点击「导出报表」
 
