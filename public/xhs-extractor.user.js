@@ -321,6 +321,7 @@
 
     function extractCount(type) {
         let count = 0;
+        let debugLog = [];
 
         // 方法1: 从页面脚本(JSON)中提取 - 查找note相关的数据
         const scripts = document.querySelectorAll('script');
@@ -329,11 +330,34 @@
             // 只处理包含note数据的脚本
             if (!text.includes('"note"') && !text.includes('"firstNoteId"')) continue;
 
+            // 改进：使用更具体的模式，查找note对象内的统计数据
             const patterns = {
-                '点赞': [/'likedCount':\s*(\d+)/, /"likedCount":\s*(\d+)/, /"likeCount":\s*"?(\d+)"?/],
-                '收藏': [/'collectedCount':\s*(\d+)/, /"collectedCount":\s*(\d+)/, /"collectCount":\s*"?(\d+)"?/],
-                '评论': [/'commentCount':\s*(\d+)/, /"commentCount":\s*(\d+)/, /"commentCount":\s*"?(\d+)"?/],
-                '分享': [/'shareCount':\s*(\d+)/, /"shareCount":\s*(\d+)/, /"shareCount":\s*"?(\d+)"?/]
+                '点赞': [
+                    /"note"[\s\S]{0,500}?"likedCount"\s*[:：]\s*(\d+)/,  // 在note对象附近查找
+                    /"likedCount"\s*[:：]\s*(\d+)(?=[\s\S]{0,200}?"note")/,  // likedCount在note前
+                    /'likedCount'\s*[:：]\s*(\d+)/,
+                    /"likedCount"\s*[:：]\s*(\d+)/,
+                    /"likeCount"\s*[:：]\s*"?(\d+)"?/
+                ],
+                '收藏': [
+                    /"note"[\s\S]{0,500}?"collectedCount"\s*[:：]\s*(\d+)/,
+                    /"collectedCount"\s*[:：]\s*(\d+)(?=[\s\S]{0,200}?"note")/,
+                    /'collectedCount'\s*[:：]\s*(\d+)/,
+                    /"collectedCount"\s*[:：]\s*(\d+)/,
+                    /"collectCount"\s*[:：]\s*"?(\d+)"?/
+                ],
+                '评论': [
+                    /"note"[\s\S]{0,500}?"commentCount"\s*[:：]\s*(\d+)/,
+                    /"commentCount"\s*[:：]\s*(\d+)(?=[\s\S]{0,200}?"note")/,
+                    /'commentCount'\s*[:：]\s*(\d+)/,
+                    /"commentCount"\s*[:：]\s*(\d+)/
+                ],
+                '分享': [
+                    /"note"[\s\S]{0,500}?"shareCount"\s*[:：]\s*(\d+)/,
+                    /"shareCount"\s*[:：]\s*(\d+)(?=[\s\S]{0,200}?"note")/,
+                    /'shareCount'\s*[:：]\s*(\d+)/,
+                    /"shareCount"\s*[:：]\s*(\d+)/
+                ]
             };
 
             if (patterns[type]) {
@@ -341,14 +365,21 @@
                     const match = text.match(pattern);
                     if (match) {
                         const val = parseInt(match[1]) || 0;
-                        if (val > 0 && val < 10000000) { // 过滤不合理的值
-                            count = val;
-                            break;
+                        if (val > 0 && val < 10000000) {
+                            // 如果已经有一个值，选择更大的那个（避免匹配到子评论的统计）
+                            if (count === 0 || val > count) {
+                                count = val;
+                                debugLog.push(`模式匹配: ${pattern.toString().substring(0, 50)}... = ${val}`);
+                            }
                         }
                     }
                 }
-                if (count > 0) return count;
             }
+        }
+
+        if (count > 0) {
+            console.log(`[小红书数据提取器] ${type}提取:`, count, debugLog);
+            return count;
         }
 
         // 方法2: 从按钮/交互区域提取
@@ -368,6 +399,7 @@
                     if (match) {
                         const val = parseCount(match[1]);
                         if (val > 0 && val < 10000000) {
+                            console.log(`[小红书数据提取器] ${type}从DOM提取:`, val, `(选择器: ${selector})`);
                             return val;
                         }
                     }
@@ -375,6 +407,7 @@
             }
         }
 
+        console.log(`[小红书数据提取器] ${type}未找到，返回0`);
         return count;
     }
 
