@@ -4,10 +4,22 @@ import MetricCard from '../components/Dashboard/MetricCard'
 import TrendChart from '../components/Dashboard/TrendChart'
 import PostRanking from '../components/Dashboard/PostRanking'
 import { Link } from 'react-router-dom'
+import { getBenchmark } from '../utils/benchmark'
+
+function pctRank(yours: number, benchmark: number): string {
+  if (benchmark <= 0) return ''
+  const ratio = yours / benchmark
+  if (ratio >= 1.3) return '超过 70% 同类账号'
+  if (ratio >= 1.0) return '超过 50% 同类账号'
+  if (ratio >= 0.7) return '超过 30% 同类账号'
+  return '低于多数同类账号'
+}
 
 export default function DashboardPage() {
   const { posts, accountStats } = useData()
   const navigate = useNavigate()
+  const benchmark = getBenchmark('default', 500)
+  const n = posts.length
 
   if (!posts.length) {
     return (
@@ -22,6 +34,13 @@ export default function DashboardPage() {
       </div>
     )
   }
+
+  const avgImpressions = Math.round(posts.reduce((s, p) => s + p.impressions, 0) / n)
+  const avgViews = Math.round(posts.reduce((s, p) => s + p.views, 0) / n)
+  const avgInteractions = Math.round(
+    posts.reduce((s, p) => s + p.likes + p.saves + p.comments + p.shares, 0) / n
+  )
+  const avgFollowers = Math.round(posts.reduce((s, p) => s + p.newFollowers, 0) / n)
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -38,14 +57,46 @@ export default function DashboardPage() {
       {/* 核心指标卡片 */}
       {accountStats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <MetricCard label="总曝光" value={accountStats.totalImpressions} />
-          <MetricCard label="总阅读" value={accountStats.totalViews} />
-          <MetricCard label="总互动" value={accountStats.totalInteractions} />
-          <MetricCard label="净增粉丝" value={accountStats.netFollowerGrowth} />
-          <MetricCard label="平均封面点击率" value={`${(accountStats.avgCoverCTR * 100).toFixed(1)}%`} />
-          <MetricCard label="平均互动率" value={`${(accountStats.avgInteractionRate * 100).toFixed(1)}%`} />
-          <MetricCard label="平均点赞率" value={`${(accountStats.avgLikeRate * 100).toFixed(1)}%`} />
-          <MetricCard label="平均涨粉率" value={`${(accountStats.avgFollowConversionRate * 100).toFixed(2)}%`} />
+          <MetricCard
+            label="总曝光"
+            value={accountStats.totalImpressions}
+            avgPerPost={avgImpressions.toLocaleString()}
+          />
+          <MetricCard
+            label="总阅读"
+            value={accountStats.totalViews}
+            avgPerPost={avgViews.toLocaleString()}
+          />
+          <MetricCard
+            label="总互动"
+            value={accountStats.totalInteractions}
+            avgPerPost={avgInteractions.toLocaleString()}
+          />
+          <MetricCard
+            label="净增粉丝"
+            value={accountStats.netFollowerGrowth}
+            avgPerPost={avgFollowers.toLocaleString()}
+          />
+          <MetricCard
+            label="平均封面点击率"
+            value={`${(accountStats.avgCoverCTR * 100).toFixed(1)}%`}
+            percentile={pctRank(accountStats.avgCoverCTR, benchmark.avgCoverCTR)}
+          />
+          <MetricCard
+            label="平均互动率"
+            value={`${(accountStats.avgInteractionRate * 100).toFixed(1)}%`}
+            percentile={pctRank(accountStats.avgInteractionRate, benchmark.avgInteractionRate)}
+          />
+          <MetricCard
+            label="平均点赞率"
+            value={`${(accountStats.avgLikeRate * 100).toFixed(1)}%`}
+            percentile={pctRank(accountStats.avgLikeRate, benchmark.avgLikeRate)}
+          />
+          <MetricCard
+            label="平均涨粉率"
+            value={`${(accountStats.avgFollowConversionRate * 100).toFixed(2)}%`}
+            percentile={pctRank(accountStats.avgFollowConversionRate, benchmark.avgFollowConversionRate)}
+          />
         </div>
       )}
 
@@ -55,10 +106,12 @@ export default function DashboardPage() {
         <TrendChart posts={posts} />
       </div>
 
-      {/* 帖子排行榜 */}
+      {/* 帖子排行榜——显示全部 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">互动量排行</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            互动率排行（共 {posts.length} 篇）
+          </h2>
           <PostRanking
             posts={posts}
             sortKey="interactionRate"
@@ -66,7 +119,9 @@ export default function DashboardPage() {
           />
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">涨粉率排行</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            涨粉率排行（共 {posts.length} 篇）
+          </h2>
           <PostRanking
             posts={posts}
             sortKey="followConversionRate"

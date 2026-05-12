@@ -11,20 +11,18 @@ export default function PostRanking({
   sortKey,
   onPostClick,
 }: PostRankingProps) {
-  const sorted = [...posts]
-    .sort((a, b) => {
-      if (sortKey === 'likes') return b.likes - a.likes
-      if (sortKey === 'interactionRate') return b.interactionRate - a.interactionRate
-      return b.followConversionRate - a.followConversionRate
-    })
-    .slice(0, 8)
+  const sorted = [...posts].sort((a, b) => {
+    if (sortKey === 'likes') return b.likes - a.likes
+    if (sortKey === 'interactionRate') return b.interactionRate - a.interactionRate
+    return b.followConversionRate - a.followConversionRate
+  })
 
   if (sorted.length === 0) {
     return <p className="text-gray-400 text-sm">暂无数据</p>
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1 max-h-[500px] overflow-y-auto">
       {sorted.map((post, index) => {
         const value =
           sortKey === 'likes'
@@ -37,10 +35,10 @@ export default function PostRanking({
           <button
             key={post.id}
             onClick={() => onPostClick(post)}
-            className="w-full text-left flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+            className="w-full text-left flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <span
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                 index === 0
                   ? 'bg-red-100 text-red-600'
                   : index === 1
@@ -54,9 +52,8 @@ export default function PostRanking({
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-gray-900 truncate">{post.title}</p>
-              <p className="text-xs text-gray-400">{post.publishDate}</p>
             </div>
-            <span className="text-sm font-medium text-gray-700 shrink-0">
+            <span className="text-xs font-medium text-gray-600 shrink-0">
               {value}
             </span>
           </button>
