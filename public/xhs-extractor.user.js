@@ -429,24 +429,55 @@
         // 展开所有楼中楼回复（先点击所有展开按钮）
         console.log('[小红书数据提取器] 开始展开楼中楼评论...');
         let expandCount = 0;
-        for (let attempt = 0; attempt < 5; attempt++) {
-            const expandBtns = document.querySelectorAll('button, div, span, a');
-            let foundNew = false;
-            for (const btn of expandBtns) {
-                const text = btn.textContent.trim();
-                // 匹配"展开X条回复"、"查看更多回复"等
-                if (/^展开\d+条回复/.test(text) || text === '查看更多回复' || text === '展开回复') {
-                    if (btn.offsetParent !== null) { // 确保按钮可见
-                        btn.click();
-                        expandCount++;
-                        foundNew = true;
-                        await sleep(200);
-                    }
+
+        // 多次尝试点击展开按钮
+        for (let round = 0; round < 10; round++) {
+            let foundInRound = 0;
+
+            // 查找所有可能的展开按钮
+            const allElements = document.querySelectorAll('button, div, span, a, p');
+            for (const el of allElements) {
+                const text = el.textContent.trim();
+
+                // 匹配各种展开回复的格式
+                const shouldClick =
+                    /^展开\d+条回复/.test(text) ||           // "展开3条回复"
+                    text === '查看更多回复' ||               // "查看更多回复"
+                    text === '展开回复' ||                   // "展开回复"
+                    text.startsWith('展开') && text.includes('回复') ||  // 其他变体
+                    /展开\s*\d+\s*条/.test(text);            // "展开 3 条"
+
+                if (shouldClick && el.offsetParent !== null) {
+                    // 滚动到按钮位置确保可见
+                    el.scrollIntoView({ behavior: 'instant', block: 'center' });
+                    await sleep(100);
+
+                    el.click();
+                    expandCount++;
+                    foundInRound++;
+                    await sleep(300);
                 }
             }
-            if (!foundNew) break; // 没有新的展开按钮了
+
+            console.log(`[小红书数据提取器] 第${round + 1}轮展开: ${foundInRound}个`);
+
+            // 如果没有找到新的按钮，等待一下再检查（可能有延迟加载的）
+            if (foundInRound === 0) {
+                await sleep(500);
+                // 再检查一次，如果还是没有就退出
+                const remainingBtns = Array.from(document.querySelectorAll('button, div, span, a, p'))
+                    .filter(el => {
+                        const text = el.textContent.trim();
+                        return (/^展开\d+条回复/.test(text) || text === '查看更多回复') && el.offsetParent !== null;
+                    });
+                if (remainingBtns.length === 0) break;
+            }
         }
-        console.log('[小红书数据提取器] 展开了', expandCount, '个楼中楼');
+
+        console.log('[小红书数据提取器] 总共展开了', expandCount, '个楼中楼');
+
+        // 等待所有展开的内容加载完成
+        await sleep(1000);
 
         // 滚动加载更多评论（最多滚动15次）
         console.log('[小红书数据提取器] 开始滚动加载评论...');
@@ -622,24 +653,35 @@
                 // 方法1: 获取元素内所有直接文本节点（排除子元素的文本）
                 const allText = el.textContent;
 
+                // 辅助函数：检查是否是日期
+                function isDate(text) {
+                    return /^\d{4}[\-\/年]\d{1,2}[\-\/月]\d{1,2}/.test(text) ||  // 2025-12-24, 2025/12/24, 2025年12月24日
+                           /^\d{4}[\-\/]\d{1,2}[\-\/]\d{1,2}\s+\d{1,2}:\d{2}/.test(text) ||  // 带时间的日期
+                           /^\d{1,2}[\-\/月]\d{1,2}[日]?$/.test(text);  // 12-24, 12月24日
+                }
+
+                // 辅助函数：检查是否是有效评论内容
+                function isValidComment(text) {
+                    if (!text || text.length <= 1) return false;
+                    if (text === author) return false;
+                    if (text.match(/^\d+$/)) return false;  // 纯数字
+                    if (isDate(text)) return false;  // 日期
+                    if (text.includes('赞') && text.match(/^\d+赞$/)) return false;  // "X赞"
+                    if (text.includes('回复') && text.length < 10) return false;  // 短回复提示
+                    if (text.includes('展开') && text.includes('回复')) return false;  // 展开按钮
+                    if (text.includes('@')) return false;  // @用户名
+                    if (text.includes('IP属地')) return false;
+                    if (text.includes('编辑于')) return false;
+                    if (text.length > 1000) return false;  // 太长
+                    return true;
+                }
+
                 // 方法2: 查找最长的span文本作为评论内容
                 let maxSpanText = '';
                 const spans = el.querySelectorAll('span');
                 for (const span of spans) {
                     const text = span.textContent.trim();
-                    // 排除短文本、纯数字、日期格式、包含特定关键词的
-                    if (text.length > maxSpanText.length &&
-                        text.length < 1000 &&
-                        text !== author &&
-                        !text.match(/^\d+$/) &&
-                        !text.match(/^\d{4}-\d{2}-\d{2}$/) && // 排除日期格式
-                        !text.match(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}$/) && // 排除带时间的日期
-                        !text.includes('赞') &&
-                        !text.includes('回复') &&
-                        !text.includes('展开') &&
-                        !text.includes('@') &&
-                        !text.includes('IP属地') &&
-                        !text.includes('编辑于')) {
+                    if (isValidComment(text) && text.length > maxSpanText.length) {
                         maxSpanText = text;
                     }
                 }
@@ -648,19 +690,13 @@
                     content = maxSpanText;
                 }
 
-                // 方法3: 如果还没找到，尝试获取div的文本（排除已知非评论部分）
+                // 方法3: 如果还没找到，尝试获取div的文本
                 if (!content) {
                     const divs = el.querySelectorAll('div');
                     for (const div of divs) {
                         const text = div.textContent.trim();
-                        if (text.length > content.length &&
-                            text.length < 1000 &&
-                            text !== author &&
-                            !text.match(/^\d+$/) &&
-                            !text.includes('IP属地') &&
-                            !text.includes('回复') &&
-                            !text.includes('展开')) {
-                            // 检查是否包含作者名
+                        if (isValidComment(text) && text.length > content.length) {
+                            // 检查是否以作者名开头（通常是作者信息行）
                             if (!text.startsWith(author)) {
                                 content = text;
                             }
@@ -670,6 +706,7 @@
 
                 // 提取点赞数
                 let likes = 0;
+
                 // 方法1: 查找包含"赞"字的元素
                 const likeElements = el.querySelectorAll('span, div');
                 for (const elem of likeElements) {
@@ -684,14 +721,35 @@
                         }
                     }
                 }
-                // 方法2: 如果没找到，查找元素属性或aria-label
+
+                // 方法2: 查找可能包含点赞数的纯数字元素（在评论区域内）
                 if (likes === 0) {
-                    const likeBtn = el.querySelector('[class*="like"] button, [class*="赞"]');
+                    const allSpans = el.querySelectorAll('span');
+                    for (const span of allSpans) {
+                        const text = span.textContent.trim();
+                        // 匹配纯数字，且在合理范围内
+                        if (/^\d+$/.test(text)) {
+                            const num = parseInt(text);
+                            // 点赞数通常在0-10000之间，且不是日期
+                            if (num >= 0 && num <= 10000 && !isDate(text)) {
+                                likes = num;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 方法3: 通过aria-label查找
+                if (likes === 0) {
+                    const likeBtn = el.querySelector('[class*="like"] button, [class*="赞"], [aria-label*="赞"]');
                     if (likeBtn) {
                         const ariaLabel = likeBtn.getAttribute('aria-label');
                         if (ariaLabel) {
                             const match = ariaLabel.match(/(\d+)/);
-                            if (match) likes = parseInt(match[1]);
+                            if (match) {
+                                const num = parseInt(match[1]);
+                                if (num < 100000) likes = num;
+                            }
                         }
                     }
                 }
