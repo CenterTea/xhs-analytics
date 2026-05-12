@@ -430,8 +430,8 @@
         console.log('[小红书数据提取器] 开始展开楼中楼评论...');
         let expandCount = 0;
 
-        // 多次尝试点击展开按钮
-        for (let round = 0; round < 10; round++) {
+        // 多次尝试点击展开按钮（最多50轮，确保展开所有回复）
+        for (let round = 0; round < 50; round++) {
             let foundInRound = 0;
 
             // 查找所有可能的展开按钮
