@@ -103,18 +103,13 @@ export default function HomePage() {
                     或使用 <a href="https://github.com/iSk2y/xhs-creator-export" target="_blank" rel="noopener noreferrer" className="text-red-500 hover:underline">xhs-creator-export</a> 插件导出更全的数据
                   </p>
                 </div>
-                <div className="bg-white rounded-xl p-4 border border-blue-100">
-                  <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                    <span className="text-blue-500">🌍</span> 海外版 REDnote
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 text-center">
+                  <h4 className="font-semibold text-gray-900 mb-2 flex items-center justify-center gap-2">
+                    <span className="text-gray-400">🌍</span> 海外版 REDnote
                   </h4>
-                  <ol className="text-sm text-gray-600 space-y-1.5 list-decimal list-inside">
-                    <li>打开 REDnote App →「Profile」→ 右上角菜单</li>
-                    <li>进入「Creator Center」→「Data Center」</li>
-                    <li>查看数据或导出（如支持）</li>
-                  </ol>
-                  <p className="text-xs text-gray-400 mt-2">
-                    海外版目前主要是 App 内查看，导出功能可能不完善
-                  </p>
+                  <p className="text-gray-400 text-2xl mb-1">🚫</p>
+                  <p className="font-medium text-gray-600 text-sm">暂不支持海外账号数据分析</p>
+                  <p className="text-xs text-gray-400 mt-1">目前仅支持国内版小红书导出的数据文件</p>
                 </div>
               </div>
             </div>

@@ -47,35 +47,12 @@ export default function UploadGuide() {
           {/* 海外版 */}
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">海外版 REDnote</h4>
-            <div className="bg-blue-50 rounded-lg p-4 space-y-3">
-              <p className="text-xs text-blue-600 mb-2">
-                REDnote 的创作者中心目前是 <strong>App 内嵌功能</strong>，没有独立的 PC 网页版后台。
-                数据导出功能可能还没有国内版完善。以下是目前可用的方法：
+            <div className="bg-gray-100 rounded-lg p-4 text-center">
+              <p className="text-gray-500 text-lg mb-2">🚫</p>
+              <p className="font-medium text-gray-700">暂不支持海外账号数据分析</p>
+              <p className="text-xs text-gray-400 mt-1">
+                目前仅支持国内版小红书导出的数据文件
               </p>
-              <div>
-                <p className="font-medium text-blue-900">方法一：App 内查看数据</p>
-                <ol className="list-decimal list-inside space-y-1 mt-1 text-blue-800">
-                  <li>打开 REDnote App → 右下角「Profile」</li>
-                  <li>点右上角三条线 →「Creator Center」（创作者中心）</li>
-                  <li>进入「Data Center」（数据中心）查看各篇笔记数据</li>
-                  <li>逐篇截屏记录关键数字，上传截图或手动填入本工具</li>
-                </ol>
-              </div>
-              <div>
-                <p className="font-medium text-blue-900">方法二：试试官方导出（如果有的话）</p>
-                <ol className="list-decimal list-inside space-y-1 mt-1 text-blue-800">
-                  <li>在 App 的 Creator Center → Data Center 里找「Export」按钮</li>
-                  <li>部分海外账号可能支持导出 xlsx 文件到邮箱</li>
-                  <li>如果找不到导出按钮，说明你的账号暂时还不支持导出</li>
-                </ol>
-              </div>
-              <div>
-                <p className="font-medium text-blue-900">方法三：先体验示例数据</p>
-                <p className="text-xs text-blue-700 mt-1">
-                  暂时导不出也不要紧，点首页的「加载示例数据」就能完整体验全部分析功能。
-                  等 REDnote 的数据导出功能上线后再用自己的数据。
-                </p>
-              </div>
             </div>
           </div>
 
