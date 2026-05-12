@@ -275,40 +275,17 @@ export default function PostAnalysisPage() {
             </div>
 
             <div className="bg-white rounded-lg p-3 mb-3 border border-amber-100">
-              <p className="text-sm font-medium text-amber-900 mb-2">步骤3：使用脚本提取数据</p>
+              <p className="text-sm font-medium text-amber-900 mb-2">步骤3：打开任意帖子</p>
               <div className="text-xs text-amber-700 space-y-1">
                 <p>• 打开任意小红书帖子页面（如 xiaohongshu.com/explore/xxxxx）</p>
                 <p>• 等待页面完全加载（约2-3秒）</p>
                 <p>• 页面右上角会出现红色按钮"📊 分析此帖"</p>
                 <p>• 点击按钮，脚本会自动滚动加载评论（最多500条）</p>
                 <p>• 数据提取完成后，会自动跳转到本页面并显示分析结果</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg p-3 border border-amber-100">
-              <p className="text-sm font-medium text-amber-900 mb-2">常见问题排查</p>
-              <div className="text-xs text-amber-700 space-y-2">
-                <div className="bg-red-50 p-2 rounded border border-red-100">
-                  <p className="font-medium text-red-800">❌ 安装后看不到"📊 分析此帖"按钮？</p>
-                  <ul className="list-disc list-inside mt-1 space-y-1">
-                    <li>确认安装的是 Tampermonkey 而不是其他脚本管理器</li>
-                    <li>检查 Tampermonkey 扩展是否<strong>已启用</strong>（图标是彩色不是灰色）</li>
-                    <li>必须在小红书<strong>帖子详情页</strong>（URL包含 /explore/）才能看到按钮</li>
-                    <li>刷新页面（按 F5 或 Ctrl+R）</li>
-                    <li>按 F12 打开控制台，看是否有红色报错信息</li>
-                  </ul>
+                <div className="bg-red-50 p-2 rounded border border-red-200 mt-2">
+                  <p className="text-red-700 font-medium">⚠️ 重要说明</p>
+                  <p className="text-red-600 mt-1">在想要打开的帖子处<strong>右键点击选取"在新标签页打开链接"</strong>，然后再分析，需要加载一会儿。</p>
                 </div>
-                <div className="bg-yellow-50 p-2 rounded border border-yellow-100">
-                  <p className="font-medium text-yellow-800">⚠️ 网页版小红书打不开？</p>
-                  <ul className="list-disc list-inside mt-1 space-y-1">
-                    <li>小红书网页版需要<strong>登录账号</strong>才能访问</li>
-                    <li>在 xiaohongshu.com 用手机扫码或验证码登录</li>
-                    <li>登录后才能看到帖子内容，脚本才能工作</li>
-                  </ul>
-                </div>
-                <p>• <strong>按钮点击没反应？</strong> 确保在帖子详情页（能看到完整帖子内容）</p>
-                <p>• <strong>提取的评论太少？</strong> 脚本需要自动滚动加载，耐心等待10-20秒</p>
-                <p>• <strong>如何卸载脚本？</strong> 点击 Tampermonkey 图标 → 找到脚本 → 点击垃圾桶图标</p>
               </div>
             </div>
           </div>
