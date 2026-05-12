@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import AttentionAnalysis from '../components/Funnel/AttentionAnalysis'
+import { useData } from '../context/DataContext'
 import type { Post } from '../types'
 
 interface PostContentAnalysis {
@@ -32,6 +33,7 @@ interface ExtractedData {
 
 export default function PostAnalysisPage() {
   const location = useLocation()
+  const { posts: existingPosts } = useData()
   // 分析状态由数据接收驱动，不再需要手动触发
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null)
   const [result, setResult] = useState<{
@@ -50,6 +52,11 @@ export default function PostAnalysisPage() {
   const [isCheckingMatch, setIsCheckingMatch] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // 判断是否有主页上传的数据
+  const hasExistingData = existingPosts.length > 0
+  // 最终使用的数据源：优先用主页上传的数据，否则用本页上传的
+  const dataSource = hasExistingData ? existingPosts : fileData
+
   // 从 URL 参数读取插件传递的数据
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -65,12 +72,12 @@ export default function PostAnalysisPage() {
     }
   }, [location])
 
-  // 当提取的数据或文件数据变化时，尝试匹配帖子
+  // 当提取的数据或数据源变化时，尝试匹配帖子
   useEffect(() => {
-    if (extractedData && fileData && fileData.length > 0) {
+    if (extractedData && dataSource && dataSource.length > 0) {
       setIsCheckingMatch(true)
       // 尝试匹配标题（完全匹配或包含关系）
-      const matched = fileData.find(post => {
+      const matched = dataSource.find(post => {
         const extractedTitle = extractedData.title.trim()
         const postTitle = post.title.trim()
         // 完全匹配或一方包含另一方
@@ -81,7 +88,7 @@ export default function PostAnalysisPage() {
       setMatchedPost(matched || null)
       setIsCheckingMatch(false)
     }
-  }, [extractedData, fileData])
+  }, [extractedData, dataSource])
 
   // 处理文件上传
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -612,11 +619,12 @@ export default function PostAnalysisPage() {
             </div>
           </div>
 
-          {/* 数据文件上传 - 用于匹配自己的帖子 */}
+          {/* 观众注意力分析 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 观众注意力分析</h2>
 
-            {!fileData ? (
+            {/* 情况1：没有主页数据，也没有本页上传的数据 */}
+            {!hasExistingData && !fileData && (
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                 <h3 className="text-sm font-medium text-blue-900 mb-2">上传数据文件获取深度分析</h3>
                 <p className="text-xs text-blue-700 mb-4">
@@ -636,7 +644,62 @@ export default function PostAnalysisPage() {
                   上传数据文件
                 </button>
               </div>
-            ) : (
+            )}
+
+            {/* 情况2：有主页数据（优先使用） */}
+            {hasExistingData && (
+              <>
+                <div className="bg-green-50 rounded-lg p-4 border border-green-100 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-green-900">✅ 检测到已有账号数据</p>
+                      <p className="text-xs text-green-700 mt-1">从主页数据看板加载了 {existingPosts.length} 条帖子数据</p>
+                    </div>
+                  </div>
+                </div>
+
+                {isCheckingMatch ? (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">正在匹配帖子数据...⏳</p>
+                  </div>
+                ) : matchedPost ? (
+                  <>
+                    <div className="bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg p-4 border border-green-200 mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🎉</span>
+                        <div>
+                          <p className="text-sm font-semibold text-green-800">已识别到这是您的帖子</p>
+                          <p className="text-xs text-green-700 mt-1">
+                            已从您的账号数据中匹配到该帖子的官方数据，正在展示观众注意力分析...
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <AttentionAnalysis post={matchedPost} isOwnPost={true} />
+                  </>
+                ) : (
+                  <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                    <div className="flex items-start gap-2">
+                      <span className="text-xl">⚠️</span>
+                      <div>
+                        <p className="text-sm font-semibold text-amber-800">未找到匹配的帖子</p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          您的账号数据中没有找到与当前帖子标题匹配的记录。请检查：
+                        </p>
+                        <ul className="text-xs text-amber-700 mt-2 list-disc list-inside">
+                          <li>确保已在主页上传包含该帖子的数据文件</li>
+                          <li>帖子标题可能有差异</li>
+                          <li>或者尝试在本页重新上传数据文件</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 情况3：没有主页数据，但有本页上传的数据 */}
+            {!hasExistingData && fileData && (
               <>
                 <div className="bg-green-50 rounded-lg p-4 border border-green-100 mb-4">
                   <div className="flex items-center justify-between">
