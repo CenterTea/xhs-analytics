@@ -203,134 +203,171 @@ export default function PostAnalysisPage() {
       // 从 HTML 中提取互动数据
       const htmlText = htmlContent
 
-      // 提取点赞数 - 尝试多种可能的数据格式
+      // 提取点赞数 - 尝试多种可能的数据格式（小红书页面源代码格式）
       let likes = 0
+      // 优先尝试小红书特定的数据格式
       const likeMatches = [
-        htmlText.match(/"like_count":\s*(\d+)/),
-        htmlText.match(/"likes":\s*(\d+)/),
-        htmlText.match(/"likeCount":\s*(\d+)/),
-        htmlText.match(/"likedCount":\s*"?(\d+)/),
-        htmlText.match(/"interaction":\s*{[^}]*"like":\s*(\d+)/),
-        htmlText.match(/点赞[\s:：]*"?(\d+)/), // 匹配"点赞"
-        htmlText.match(/喜欢[\s:：]*"?(\d+)/), // 匹配"喜欢"
+        // 小红书creator后台导出格式
+        htmlText.match(/"liked_count"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"like_count"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"likes"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"likeCount"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"likedCount"[:：]\s*"?(\d+)/i),
+        // 尝试在特定标签内匹配
+        htmlText.match(/点赞\s*[：:]\s*(\d+)/),
+        htmlText.match(/喜欢\s*[：:]\s*(\d+)/),
+        htmlText.match(/>点赞<[^>]*>\s*<[^>]*>(\d+)/),
+        // JSON格式
+        htmlText.match(/"interaction"[^{]*{[^}]*"like"[：:]\s*(\d+)/i),
+        // 从包含like的JSON对象中提取
+        htmlText.match(/"like"[^{}]*:\s*"?(\d+)"?/),
       ]
       for (const match of likeMatches) {
         if (match) {
-          likes = parseInt(match[1]) || 0
-          if (likes > 0) break
+          const value = parseInt(match[1]) || 0
+          if (value > likes) likes = value
         }
       }
 
       // 提取收藏数
       let collects = 0
       const collectMatches = [
-        htmlText.match(/"collect_count":\s*(\d+)/),
-        htmlText.match(/"collects":\s*(\d+)/),
-        htmlText.match(/"collectCount":\s*(\d+)/),
-        htmlText.match(/"collectedCount":\s*"?(\d+)/),
-        htmlText.match(/"favoriteCount":\s*(\d+)/),
-        htmlText.match(/收藏[\s:：]*"?(\d+)/), // 匹配"收藏"
-        htmlText.match(/星标[\s:：]*"?(\d+)/), // 匹配"星标"
+        htmlText.match(/"collected_count"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"collect_count"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"collects"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"collectCount"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"collectedCount"[:：]\s*"?(\d+)/i),
+        htmlText.match(/收藏\s*[：:]\s*(\d+)/),
+        htmlText.match(/>收藏<[^>]*>\s*<[^>]*>(\d+)/),
+        htmlText.match(/"favoriteCount"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"favorite"[^{}]*:\s*"?(\d+)"?/),
       ]
       for (const match of collectMatches) {
         if (match) {
-          collects = parseInt(match[1]) || 0
-          if (collects > 0) break
+          const value = parseInt(match[1]) || 0
+          if (value > collects) collects = value
         }
       }
 
       // 提取评论数
       let comments = 0
       const commentMatches = [
-        htmlText.match(/"comment_count":\s*(\d+)/),
-        htmlText.match(/"comments":\s*(\d+)/),
-        htmlText.match(/"commentCount":\s*(\d+)/),
-        htmlText.match(/"commentsCount":\s*"?(\d+)/),
-        htmlText.match(/"commentCount":\s*"(\d+)"/),
-        htmlText.match(/评论[\s:：]*"?(\d+)/), // 匹配"评论"
+        htmlText.match(/"comment_count"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"comments_count"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"comments"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"commentCount"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"commentsCount"[:：]\s*"?(\d+)/i),
+        htmlText.match(/评论\s*[：:]\s*(\d+)/),
+        htmlText.match(/>评论<[^>]*>\s*<[^>]*>(\d+)/),
+        htmlText.match(/"comment"[^{}]*:\s*"?(\d+)"?/),
       ]
       for (const match of commentMatches) {
         if (match) {
-          comments = parseInt(match[1]) || 0
-          if (comments > 0) break
+          const value = parseInt(match[1]) || 0
+          if (value > comments) comments = value
         }
       }
 
       // 提取分享数
       let shares = 0
       const shareMatches = [
-        htmlText.match(/"share_count":\s*(\d+)/),
-        htmlText.match(/"shares":\s*(\d+)/),
-        htmlText.match(/"shareCount":\s*(\d+)/),
-        htmlText.match(/"sharedCount":\s*"?(\d+)/),
-        htmlText.match(/分享[\s:：]*"?(\d+)/), // 匹配"分享"
-        htmlText.match(/转发[\s:：]*"?(\d+)/), // 匹配"转发"
+        htmlText.match(/"share_count"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"shares"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"shareCount"[:：]\s*"?(\d+)/i),
+        htmlText.match(/"sharedCount"[:：]\s*"?(\d+)/i),
+        htmlText.match(/分享\s*[：:]\s*(\d+)/),
+        htmlText.match(/转发\s*[：:]\s*(\d+)/),
+        htmlText.match(/>分享<[^>]*>\s*<[^>]*>(\d+)/),
+        htmlText.match(/"share"[^{}]*:\s*"?(\d+)"?/),
       ]
       for (const match of shareMatches) {
         if (match) {
-          shares = parseInt(match[1]) || 0
-          if (shares > 0) break
+          const value = parseInt(match[1]) || 0
+          if (value > shares) shares = value
         }
       }
 
-      // 提取作者名
+      // 提取作者名 - 小红书creator后台字段
       let author = ''
       const authorMatches = [
-        htmlText.match(/"nickname":\s*"([^"]+)"/),
-        htmlText.match(/"author":\s*"([^"]+)"/),
-        htmlText.match(/"user_name":\s*"([^"]+)"/),
-        htmlText.match(/"userName":\s*"([^"]+)"/),
+        htmlText.match(/"nick_name"[:：]\s*"([^"]+)"/i),
+        htmlText.match(/"nickname"[:：]\s*"([^"]+)"/i),
+        htmlText.match(/"author_name"[:：]\s*"([^"]+)"/i),
+        htmlText.match(/"author"[:：]\s*"([^"]+)"/i),
+        htmlText.match(/"user_name"[:：]\s*"([^"]+)"/i),
+        htmlText.match(/"userName"[:：]\s*"([^"]+)"/i),
         htmlText.match(/<meta[^>]*author[^>]*content="([^"]+)"/i),
       ]
       for (const match of authorMatches) {
-        if (match) {
-          author = match[1] || ''
-          if (author) break
+        if (match && match[1]) {
+          author = match[1].trim()
+          if (author && author.length > 0 && author !== '小红书') break
         }
       }
 
       // 提取发布时间
       let postTime = ''
       const timeMatches = [
-        htmlText.match(/"create_time":\s*"([^"]+)"/),
-        htmlText.match(/"publish_time":\s*"([^"]+)"/),
-        htmlText.match(/"post_time":\s*"([^"]+)"/),
-        htmlText.match(/"time":\s*"([^"]{10,20})"/),
+        htmlText.match(/"create_time"[:：]\s*"([^"]+)"/i),
+        htmlText.match(/"publish_time"[:：]\s*"([^"]+)"/i),
+        htmlText.match(/"post_time"[:：]\s*"([^"]+)"/i),
+        htmlText.match(/"time"[:：]\s*"([^"]{10,20})"/),
+        htmlText.match(/发布于\s*"?([^"<]+)/),
         htmlText.match(/<meta[^>]*time[^>]*content="([^"]+)"/i),
       ]
       for (const match of timeMatches) {
-        if (match) {
-          postTime = match[1] || ''
-          if (postTime) break
+        if (match && match[1]) {
+          postTime = match[1].trim()
+          if (postTime && postTime.length >= 8) break
         }
       }
 
       // 提取URL
       let url = ''
       const urlMatches = [
-        htmlText.match(/"url":\s*"(https:\/\/www\.xiaohongshu\.com\/[^"]+)"/),
-        htmlText.match(/"share_url":\s*"([^"]+)"/),
+        htmlText.match(/"url"[:：]\s*"(https:\/\/www\.xiaohongshu\.com\/[^"]+)"/),
+        htmlText.match(/"share_url"[:：]\s*"([^"]+)"/i),
+        htmlText.match(/"note_url"[:：]\s*"([^"]+)"/i),
         htmlText.match(/<link[^>]*canonical[^>]*href="([^"]+)"/i),
+        htmlText.match(/href="(https:\/\/www\.xiaohongshu\.com\/explore\/[^"]+)"/),
       ]
       for (const match of urlMatches) {
-        if (match) {
-          url = match[1] || ''
-          if (url) break
+        if (match && match[1]) {
+          url = match[1].trim()
+          if (url.includes('xiaohongshu.com')) break
         }
       }
 
-      // 尝试从页面内容提取标题（如果h1没有）
-      let title = doc.querySelector('h1')?.textContent?.trim() || ''
+      // 提取标题
+      let title = ''
+      // 先尝试从DOM提取
+      const h1 = doc.querySelector('h1')
+      if (h1) {
+        title = h1.textContent?.trim() || ''
+      }
+      // 如果h1没有，尝试其他选择器
       if (!title) {
+        const titleEl = doc.querySelector('title')
+        if (titleEl) {
+          title = titleEl.textContent?.trim() || ''
+          // 移除小红书后缀
+          title = title.replace(/\s*-\s*小红书$/, '').trim()
+        }
+      }
+      // 尝试从JSON数据提取
+      if (!title || title.length < 5) {
         const titleMatches = [
-          htmlText.match(/"title":\s*"([^"]{5,100})"/),
-          htmlText.match(/"note_title":\s*"([^"]{5,100})"/),
-          htmlText.match(/<title>([^<]+)<\/title>/),
+          htmlText.match(/"title"[:：]\s*"([^"]{5,100})"/i),
+          htmlText.match(/"note_title"[:：]\s*"([^"]{5,100})"/i),
+          htmlText.match(/"post_title"[:：]\s*"([^"]{5,100})"/i),
+          htmlText.match(/"caption"[:：]\s*"([^"]{5,100})"/i),
         ]
         for (const match of titleMatches) {
-          if (match) {
-            title = match[1]?.trim() || ''
-            if (title && title.length > 5) break
+          if (match && match[1]) {
+            const candidate = match[1].trim()
+            if (candidate.length > title.length) {
+              title = candidate
+            }
           }
         }
       }
@@ -338,39 +375,60 @@ export default function PostAnalysisPage() {
       // 提取正文内容
       let content = ''
       const contentMatches = [
-        htmlText.match(/"desc":\s*"([^"]{20,5000})"/),
-        htmlText.match(/"content":\s*"([^"]{20,5000})"/),
-        htmlText.match(/"description":\s*"([^"]{20,5000})"/),
+        htmlText.match(/"desc"[:：]\s*"([^"]{20,10000})"/i),
+        htmlText.match(/"description"[:：]\s*"([^"]{20,10000})"/i),
+        htmlText.match(/"content"[:：]\s*"([^"]{20,10000})"/i),
+        htmlText.match(/"text"[:：]\s*"([^"]{20,10000})"/i),
       ]
       for (const match of contentMatches) {
-        if (match) {
-          content = match[1]?.trim() || ''
-          if (content.length > 20) break
+        if (match && match[1]) {
+          const candidate = match[1].trim()
+          if (candidate.length > content.length) {
+            content = candidate
+          }
         }
       }
       // 如果还是没找到，从body提取
-      if (!content) {
-        content = doc.body?.innerText?.slice(0, 2000) || ''
+      if (!content && doc.body) {
+        const bodyText = doc.body.innerText?.slice(0, 2000) || ''
+        // 尝试过滤掉无关内容
+        const lines = bodyText.split('\n').filter(line => line.trim().length > 10)
+        if (lines.length > 0) {
+          content = lines.slice(0, 5).join('\n')
+        }
+      }
+
+      // 如果URL是帖子链接，尝试从URL提取笔记ID
+      let noteId = ''
+      if (url) {
+        const noteMatch = url.match(/\/explore\/([a-zA-Z0-9]+)/)
+        if (noteMatch) {
+          noteId = noteMatch[1]
+        }
       }
 
       const data: ExtractedData = {
         title: title || '未知标题',
-        content: content,
+        content: content || '未提取到正文内容',
         author: author || '未知作者',
         likes,
         collects,
         comments,
         shares,
-        postTime,
-        url: url || '未知链接'
+        postTime: postTime || '',
+        url: url || (noteId ? `https://www.xiaohongshu.com/explore/${noteId}` : '')
       }
 
       // 验证数据有效性
       if (likes === 0 && collects === 0 && comments === 0) {
-        alert('未能从HTML中提取到互动数据。请确保粘贴的是小红书帖子页面的完整源代码（右键→查看网页源代码）。')
+        console.log('提取结果:', data)
+        alert('未能从HTML中提取到互动数据。\n\n可能原因：\n1. 粘贴的不是小红书帖子页面的完整源代码\n2. 小红书页面格式已更新\n\n建议：使用方式1（Tampermonkey脚本）或确保完整复制「查看网页源代码」的内容。')
         setAnalyzing(false)
         return
       }
+
+      // 调试日志
+      console.log('提取的数据:', data)
 
       analyzeData(data)
     } else {
