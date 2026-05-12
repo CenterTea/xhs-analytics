@@ -667,17 +667,29 @@
                     const authorEl = el.querySelector(sel);
                     if (authorEl) {
                         const text = authorEl.textContent.trim();
-                        if (text && text.length < 50 && !text.includes(' ')) {
-                            author = text;
+                        // 放宽条件：只要有文本，长度合理即可
+                        if (text && text.length > 0 && text.length < 100) {
+                            // 如果包含空格，只取第一部分（通常是昵称）
+                            author = text.split(/\s+/)[0];
                             break;
                         }
                     }
                 }
 
-                // 如果没有找到作者，跳过这条
+                // 如果还是没有找到作者，尝试从元素的第一个子元素获取
                 if (!author) {
-                    console.log('[小红书数据提取器] 跳过：未找到作者', el.textContent.substring(0, 100));
-                    return;
+                    const firstLink = el.querySelector('a');
+                    if (firstLink) {
+                        const text = firstLink.textContent.trim();
+                        if (text && text.length > 0 && text.length < 100) {
+                            author = text.split(/\s+/)[0];
+                        }
+                    }
+                }
+
+                // 如果没有找到作者，使用默认名称
+                if (!author) {
+                    author = '未知用户';
                 }
 
                 // 提取评论内容 - 直接从元素的所有文本中提取
