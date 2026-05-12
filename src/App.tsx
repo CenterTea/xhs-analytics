@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import DashboardPage from './pages/DashboardPage'
 import AccountAnalysisPage from './pages/AccountAnalysisPage'
+import PostAnalysisPage from './pages/PostAnalysisPage'
 import PostDetailPage from './pages/PostDetailPage'
 import { DataProvider } from './context/DataContext'
 
@@ -14,6 +15,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/account-analysis" element={<AccountAnalysisPage />} />
+          <Route path="/post-analysis" element={<PostAnalysisPage />} />
           <Route path="/post/:id" element={<PostDetailPage />} />
         </Routes>
       </Layout>

@@ -7,7 +7,6 @@ import TrafficSource from '../components/Funnel/TrafficSource'
 import CommentQuality from '../components/Interaction/CommentQuality'
 import ShareAnalysis from '../components/Interaction/ShareAnalysis'
 import ViewingTimeAnalysis from '../components/Interaction/ViewingTimeAnalysis'
-import ViewingPeriodsChart from '../components/Interaction/ViewingPeriodsChart'
 import AttributionCard from '../components/Attribution/AttributionCard'
 import ReferencePosts from '../components/Attribution/ReferencePosts'
 import DiagnosisReport from '../components/Diagnosis/DiagnosisReport'
@@ -85,7 +84,16 @@ export default function PostDetailPage() {
 
       {/* 各漏斗层级详情 */}
       <div className="space-y-4 mb-8">
-        <h2 className="text-lg font-semibold text-gray-900">漏斗逐层分析</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">漏斗逐层分析</h2>
+        </div>
+
+        {/* 数据来源说明 */}
+        <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 text-sm text-blue-800">
+          <p className="font-medium text-blue-900 mb-1">💡 关于数据对比</p>
+          <p>对比的是「通用-新手期(0-1000粉)」账号的平均数据。绝对数值（如曝光量）因账号阶段差异很大，重点看相对指标（如点击率、互动率）。</p>
+        </div>
+
         <FunnelLayer
           label="曝光量"
           absoluteValue={post.impressions}
@@ -93,22 +101,16 @@ export default function PostDetailPage() {
           relativeLabel="封面点击率"
           benchmarkValue={0.08}
           diagnosis={diagnosis?.funnelDiagnosis[0]}
+          layerType="ctr"
         />
         <FunnelLayer
           label="阅读量 / 播放量"
           absoluteValue={post.views}
-          relativeValue={post.completionRate ?? 0}
-          relativeLabel="完播率"
-          benchmarkValue={0.35}
-          diagnosis={diagnosis?.funnelDiagnosis[1]}
-        />
-        <FunnelLayer
-          label="互动量"
-          absoluteValue={post.likes + post.saves + post.comments + post.shares}
           relativeValue={post.interactionRate}
           relativeLabel="互动率"
           benchmarkValue={0.05}
-          diagnosis={diagnosis?.funnelDiagnosis[2]}
+          diagnosis={diagnosis?.funnelDiagnosis[1]}
+          layerType="interaction"
         />
         <FunnelLayer
           label="涨粉"
@@ -116,32 +118,30 @@ export default function PostDetailPage() {
           relativeValue={post.followConversionRate}
           relativeLabel="涨粉转化率"
           benchmarkValue={0.01}
-          diagnosis={diagnosis?.funnelDiagnosis[3]}
+          diagnosis={diagnosis?.funnelDiagnosis[2]}
+          layerType="conversion"
         />
       </div>
 
       {/* 指标对比表 */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">绝对 + 相对指标对比</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">指标对比表</h2>
         <MetricComparison post={post} />
       </div>
 
-      {/* 观看时长与完播率分析 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">观看时长 & 评论区关联</h2>
-          <ViewingTimeAnalysis
-            avgWatchTime={post.avgWatchTime}
-            totalWatchTime={post.totalWatchTime}
-            completionRate={post.completionRate}
-            commentRate={post.commentRate}
-            followConversionRate={post.followConversionRate}
-          />
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">观看时段分布</h2>
-          <ViewingPeriodsChart viewingPeriods={post.viewingPeriods} />
-        </div>
+      {/* 观看时长分析 */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">观看时长分析</h2>
+        <ViewingTimeAnalysis
+          avgWatchTime={post.avgWatchTime}
+          totalWatchTime={post.totalWatchTime}
+          completionRate={post.completionRate}
+          commentRate={post.commentRate}
+          followConversionRate={post.followConversionRate}
+        />
+        <p className="text-xs text-gray-400 mt-4">
+          数据来源：小红书创作者中心后台数据。观看时长反映内容能否留住用户，是平台判断内容质量的重要指标。
+        </p>
       </div>
 
       {/* 流量来源 */}
