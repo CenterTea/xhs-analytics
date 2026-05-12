@@ -2,6 +2,30 @@ import * as XLSX from 'xlsx'
 import type { Post } from '../types'
 import { calculatePostRates } from './calculate'
 
+export interface ParseDebugInfo {
+  sheetNames: string[]
+  columnNames: string[]
+  rowCount: number
+  sampleRows: Record<string, unknown>[]
+}
+
+/**
+ * 获取文件的调试信息（用于诊断解析问题）
+ */
+export async function getParseDebugInfo(file: File): Promise<ParseDebugInfo> {
+  const buffer = await file.arrayBuffer()
+  const workbook = XLSX.read(buffer, { type: 'array' })
+  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  const rawData: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet)
+
+  return {
+    sheetNames: workbook.SheetNames,
+    columnNames: rawData.length > 0 ? Object.keys(rawData[0]) : [],
+    rowCount: rawData.length,
+    sampleRows: rawData.slice(0, 3),
+  }
+}
+
 /**
  * 解析上传的 CSV 或 Excel 文件
  * 兼容小红书创作者平台导出 和 xhs-creator-export 工具导出两种格式
@@ -9,11 +33,24 @@ import { calculatePostRates } from './calculate'
 export async function parseFile(file: File): Promise<Post[]> {
   const buffer = await file.arrayBuffer()
   const workbook = XLSX.read(buffer, { type: 'array' })
+
+  if (workbook.SheetNames.length === 0) {
+    throw new Error('Excel 文件中没有工作表')
+  }
+
   const sheet = workbook.Sheets[workbook.SheetNames[0]]
   const rawData: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet)
 
   if (rawData.length === 0) {
-    throw new Error('文件中没有数据行，请检查文件内容')
+    const sheetNames = workbook.SheetNames.join('、')
+    throw new Error(
+      `文件中没有数据行。\n\n` +
+      `检测到的工作表：${sheetNames}\n\n` +
+      `请确认：\n` +
+      `1. 数据是否在第一个工作表中\n` +
+      `2. 文件是否包含表头行\n` +
+      `3. 是否上传了正确的数据文件`
+    )
   }
 
   const posts = rawData.map((row, index) => {
@@ -27,11 +64,20 @@ export async function parseFile(file: File): Promise<Post[]> {
   )
   if (allEmpty) {
     const fileColumns = Object.keys(rawData[0]).join('、')
+    const sampleData = JSON.stringify(rawData[0], null, 2).slice(0, 500)
     throw new Error(
       `解析后所有数据都是 0，可能是列名没匹配上。\n\n` +
-      `文件中的列名：${fileColumns}\n\n` +
-      `请确认你的文件包含以下列之一：\n` +
-      `标题/笔记标题、曝光量、阅读数/阅读量、点赞数、收藏数、评论数、分享数/转发数、涨粉数`
+      `【文件中的列名】\n${fileColumns}\n\n` +
+      `【第一行数据样本】\n${sampleData}${rawData[0] && JSON.stringify(rawData[0]).length > 500 ? '...' : ''}\n\n` +
+      `【系统期望的列名】\n` +
+      `- 标题相关：标题、笔记标题、title\n` +
+      `- 曝光相关：曝光量、impressions、展现量\n` +
+      `- 阅读相关：阅读数、阅读量、views、浏览量\n` +
+      `- 点赞相关：点赞数、likes、点赞\n` +
+      `- 收藏相关：收藏数、saves、收藏\n` +
+      `- 评论相关：评论数、comments、评论\n` +
+      `- 分享相关：分享数、转发数、shares、转发\n` +
+      `- 涨粉相关：涨粉数、newFollowers、新增粉丝`
     )
   }
 

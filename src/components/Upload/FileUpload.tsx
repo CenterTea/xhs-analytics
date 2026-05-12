@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { parseFile } from '../../utils/parse'
+import { parseFile, getParseDebugInfo, type ParseDebugInfo } from '../../utils/parse'
 
 interface FileUploadProps {
   onDataLoaded: (data: { posts: import('../../types').Post[] }) => void
@@ -9,11 +9,14 @@ export default function FileUpload({ onDataLoaded }: FileUploadProps) {
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<ParseDebugInfo | null>(null)
+  const [showDebug, setShowDebug] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = useCallback(
     async (file: File) => {
       setError('')
+      setDebugInfo(null)
       setLoading(true)
 
       try {
@@ -22,6 +25,16 @@ export default function FileUpload({ onDataLoaded }: FileUploadProps) {
           setError('不支持的文件格式，请上传 CSV、Excel 或 JSON 文件')
           setLoading(false)
           return
+        }
+
+        // 对于非 JSON 文件，先获取调试信息以便诊断
+        if (ext !== 'json') {
+          try {
+            const debug = await getParseDebugInfo(file)
+            setDebugInfo(debug)
+          } catch {
+            // 忽略调试信息获取失败
+          }
         }
 
         let posts: import('../../types').Post[]
@@ -42,7 +55,7 @@ export default function FileUpload({ onDataLoaded }: FileUploadProps) {
 
         onDataLoaded({ posts })
       } catch (e) {
-        setError(`文件解析失败：${e instanceof Error ? e.message : '未知错误'}`)
+        setError(`${e instanceof Error ? e.message : '未知错误'}`)
       } finally {
         setLoading(false)
       }
@@ -110,8 +123,50 @@ export default function FileUpload({ onDataLoaded }: FileUploadProps) {
       </div>
 
       {error && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 whitespace-pre-wrap">
           {error}
+        </div>
+      )}
+
+      {debugInfo && (
+        <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-sm text-gray-600 hover:text-gray-800 font-medium flex items-center gap-1"
+          >
+            <span>{showDebug ? '▼' : '▶'}</span>
+            查看文件调试信息（用于排查问题）
+          </button>
+
+          {showDebug && (
+            <div className="mt-3 space-y-3 text-xs text-gray-600">
+              <div>
+                <p className="font-medium text-gray-700">工作表名称：</p>
+                <p className="mt-1">{debugInfo.sheetNames.join('、')}</p>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700">数据行数：{debugInfo.rowCount}</p>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700">列名（{debugInfo.columnNames.length}个）：</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {debugInfo.columnNames.map((col) => (
+                    <span key={col} className="px-2 py-0.5 bg-white border border-gray-200 rounded">
+                      {col}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {debugInfo.sampleRows.length > 0 && (
+                <div>
+                  <p className="font-medium text-gray-700">数据样本（第一行）：</p>
+                  <pre className="mt-1 p-2 bg-white border border-gray-200 rounded overflow-x-auto">
+                    {JSON.stringify(debugInfo.sampleRows[0], null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
