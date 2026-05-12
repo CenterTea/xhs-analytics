@@ -18,7 +18,7 @@ export default function FileUpload({ onDataLoaded }: FileUploadProps) {
 
       try {
         const ext = file.name.split('.').pop()?.toLowerCase()
-        if (!['csv', 'xlsx', 'xls', 'json'].includes(ext ?? '')) {
+        if (!['csv', 'xlsx', 'xls', 'json', 'xslx'].includes(ext ?? '')) {
           setError('不支持的文件格式，请上传 CSV、Excel 或 JSON 文件')
           setLoading(false)
           return

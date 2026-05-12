@@ -12,35 +12,55 @@ export async function parseFile(file: File): Promise<Post[]> {
   const sheet = workbook.Sheets[workbook.SheetNames[0]]
   const rawData: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet)
 
-  return rawData.map((row, index) => {
+  if (rawData.length === 0) {
+    throw new Error('文件中没有数据行，请检查文件内容')
+  }
+
+  const posts = rawData.map((row, index) => {
     const post = parseRow(row, index)
     return calculatePostRates(post)
   })
+
+  // 检查是否所有数据都是空的（列名没匹配上）
+  const allEmpty = posts.every(
+    (p) => p.impressions === 0 && p.views === 0 && p.likes === 0
+  )
+  if (allEmpty) {
+    const fileColumns = Object.keys(rawData[0]).join('、')
+    throw new Error(
+      `解析后所有数据都是 0，可能是列名没匹配上。\n\n` +
+      `文件中的列名：${fileColumns}\n\n` +
+      `请确认你的文件包含以下列之一：\n` +
+      `标题/笔记标题、曝光量、阅读数/阅读量、点赞数、收藏数、评论数、分享数/转发数、涨粉数`
+    )
+  }
+
+  return posts
 }
 
-// 字段映射：管理可能的列名变体
+// 字段映射：兼容官方导出 + xhs-creator-export 等多种格式
 const fieldMapping: Record<string, string[]> = {
-  id: ['笔记ID', 'id', 'post_id', 'article_id', '笔记id', '编号'],
-  title: ['标题', 'title', '笔记标题', '内容标题'],
-  type: ['类型', 'type', '笔记类型', '内容类型', 'media_type'],
-  publishDate: ['发布时间', 'publishDate', '发布时间', 'publish_time', '发布日期', 'date'],
-  impressions: ['曝光量', 'impressions', '曝光', '展现量', '展示量'],
-  views: ['阅读量', 'views', '阅读', '浏览', '浏览量', '播放量', '播放'],
-  avgWatchTime: ['平均观看时长', 'avgWatchTime', '平均停留时长', '观看时长'],
-  completionRate: ['完播率', 'completionRate', '完播率', '阅读完成率'],
-  likes: ['点赞数', 'likes', '点赞', '点赞量'],
-  saves: ['收藏数', 'saves', '收藏', '收藏量', 'bookmarks'],
-  comments: ['评论数', 'comments', '评论', '评论量'],
-  shares: ['转发数', 'shares', '转发', '分享', '分享数', 'share_count'],
-  newFollowers: ['涨粉数', 'newFollowers', '新增粉丝', '涨粉', 'follows'],
+  id: ['笔记ID', 'id', 'post_id', 'article_id', '笔记id', '编号', '序号'],
+  title: ['标题', 'title', '笔记标题', '内容标题', '笔记'],
+  type: ['笔记类型', '类型', 'type', '内容类型', 'media_type', '形式'],
+  publishDate: ['发布时间', 'publishDate', '发布时间', 'publish_time', '发布日期', 'date', '时间'],
+  impressions: ['曝光量', 'impressions', '曝光', '展现量', '展示量', '曝光数'],
+  views: ['阅读数', '阅读量', 'views', '阅读', '浏览', '浏览量', '播放量', '播放', 'read_count', 'view_count'],
+  avgWatchTime: ['平均观看时长', 'avgWatchTime', '平均停留时长', '观看时长', '平均观看时长（秒）', 'avg_watch_time'],
+  completionRate: ['完播率', 'completionRate', '完播率', '阅读完成率', '完成率'],
+  likes: ['点赞数', 'likes', '点赞', '点赞量', 'like_count', '获赞'],
+  saves: ['收藏数', 'saves', '收藏', '收藏量', 'bookmarks', 'save_count', '收藏次数'],
+  comments: ['评论数', 'comments', '评论', '评论量', 'comment_count', '弹幕数'],
+  shares: ['分享数', '转发数', 'shares', '转发', '分享', '分享量', 'share_count', '转发量'],
+  newFollowers: ['涨粉数', 'newFollowers', '新增粉丝', '涨粉', 'follows', '新增关注'],
   effectiveComments: ['有效评论数', 'effectiveComments', '有效评论'],
   ineffectiveComments: ['无效评论数', 'ineffectiveComments', '无效评论'],
-  topics: ['话题', 'topics', '标签', 'tags', '话题标签'],
-  recommend: ['推荐流量', 'recommend', '推荐', '推荐来源'],
-  search: ['搜索流量', 'search', '搜索', '搜索来源'],
-  following: ['关注流量', 'following', '关注', '关注来源'],
-  profile: ['个人主页流量', 'profile', '个人主页', '主页来源'],
-  other: ['其他流量', 'other', '其他来源'],
+  topics: ['话题', 'topics', '标签', 'tags', '话题标签', '关键词'],
+  recommend: ['推荐流量', 'recommend', '推荐', '推荐来源', '推荐流'],
+  search: ['搜索流量', 'search', '搜索', '搜索来源', '搜索流'],
+  following: ['关注流量', 'following', '关注', '关注来源', '关注流'],
+  profile: ['个人主页流量', 'profile', '个人主页', '主页来源', '主页流'],
+  other: ['其他流量', 'other', '其他来源', '其它'],
 }
 
 function getField(row: Record<string, unknown>, keys: string[]): unknown {
