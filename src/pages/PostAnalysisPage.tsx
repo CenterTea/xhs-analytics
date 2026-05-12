@@ -94,9 +94,33 @@ export default function PostAnalysisPage() {
             {analyzing ? '分析中...' : '开始分析'}
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-2">
-          支持 xiaohongshu.com 和 xhslink.com 链接。分析功能需要帖子为公开状态。
-        </p>
+        {/* 爬虫接入说明 */}
+        <div className="mt-4 bg-amber-50 rounded-lg p-4 border border-amber-100">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">🚧</span>
+            <div>
+              <h4 className="font-medium text-amber-900 mb-1">关于爬虫接入</h4>
+              <p className="text-sm text-amber-800 mb-2">
+                单帖分析需要爬取小红书公开的帖子内容和评论数据，这需要部署后端爬虫服务。
+              </p>
+              <p className="text-xs text-amber-700">
+                当前版本为前端演示，展示分析后的数据呈现形式。如需真实数据爬取，需额外部署 Python/Node.js 后端服务，处理反爬、登录态、数据解析等。
+              </p>
+              <details className="mt-2">
+                <summary className="text-xs text-amber-600 cursor-pointer hover:text-amber-800 font-medium">
+                  查看爬虫技术方案
+                </summary>
+                <div className="mt-2 pl-2 text-xs text-amber-700 space-y-1">
+                  <p>1. 使用 Puppeteer/Playwright 模拟浏览器行为</p>
+                  <p>2. 处理小红书反爬机制（滑块验证、请求频率限制）</p>
+                  <p>3. 解析加密接口返回的数据</p>
+                  <p>4. 评论内容需要做 NLP 分析（情感分析、关键词提取）</p>
+                  <p>5. 需定期更新 cookie/登录态</p>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 功能说明 */}

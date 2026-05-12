@@ -118,30 +118,6 @@ export default function FunnelChart({ post }: FunnelChartProps) {
         })}
       </div>
 
-      {/* 专业术语解释 */}
-      <div className="mt-6 bg-amber-50 rounded-lg p-4 border border-amber-100">
-        <h4 className="text-sm font-semibold text-amber-900 mb-2">💡 这些术语是什么意思？</h4>
-        <dl className="space-y-2 text-xs text-amber-800">
-          <div>
-            <dt className="font-medium">封面点击率（CTR）</dt>
-            <dd>看到封面的人里，有多少人点击进来阅读。计算公式：阅读量 ÷ 曝光量。这是最重要的第一层筛选。</dd>
-          </div>
-          <div>
-            <dt className="font-medium">互动率</dt>
-            <dd>看完内容后，有多少人愿意互动（点赞+收藏+评论+分享）。计算公式：总互动数 ÷ 阅读量。反映内容质量。</dd>
-          </div>
-          <div>
-            <dt className="font-medium">涨粉率</dt>
-            <dd>看完内容后关注你的比例。计算公式：新增粉丝 ÷ 阅读量。反映内容的长期价值。</dd>
-          </div>
-          {post.avgWatchTime && (
-            <div>
-              <dt className="font-medium">人均观看时长</dt>
-              <dd>每个人平均看了多久（秒）。时长越长，说明内容越能留住人。</dd>
-            </div>
-          )}
-        </dl>
-      </div>
     </div>
   )
 }
