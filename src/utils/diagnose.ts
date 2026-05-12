@@ -2,9 +2,6 @@ import type { Post, Diagnosis, FunnelLayerDiagnosis, Improvement } from '../type
 import { getBenchmark } from './benchmark'
 import { matchReferences } from './reference'
 
-/**
- * 对单篇帖子进行完整漏斗诊断
- */
 export function diagnosePost(post: Post, _allPosts: Post[]): Diagnosis {
   const benchmark = getBenchmark('default', 500)
 
@@ -39,13 +36,8 @@ export function diagnosePost(post: Post, _allPosts: Post[]): Diagnosis {
     ),
   ]
 
-  // 归因分析
   const { rootCause, attribution, improvements } = attribute(funnelDiagnosis, post)
-
-  // 匹配素人参考
   const referencePosts = matchReferences(post, funnelDiagnosis)
-
-  // 综合评级
   const overallRating = getOverallRating(funnelDiagnosis)
 
   return {
@@ -74,25 +66,21 @@ function diagnoseLayer(
 
   if (diff > 0.5) {
     rating = 'great'
-    explanation = `${metricName}显著高于同类目均值，说明这一层的表现非常出色。`
-    suggestion = `保持当前策略，可以尝试在其他层继续优化。`
+    explanation = `${metricName}比大部分同类内容好不少 👍 这一层你做得挺棒的。`
+    suggestion = `这块继续保持就行，可以把精力放在其他还能提升的地方。`
   } else if (diff >= -0.3) {
     rating = 'normal'
-    explanation = `${metricName}接近或略低于同类目均值，还有提升空间。`
-    suggestion = `小幅优化即可达到优秀水平。`
+    explanation = `${metricName}跟大部分人差不多，不算差，但还有进步空间。`
+    suggestion = `不用大动干戈，稍微调一调就能更好。`
   } else {
     rating = 'poor'
-    explanation = `${metricName}明显低于同类目均值，这是需要重点关注的薄弱环节。`
-    suggestion = `建议优先改进这一层的问题。`
+    explanation = `${metricName}这块确实偏低了 😅 这是你最需要花时间改进的地方。`
+    suggestion = `别担心，这不是说你不行，只是说这一层没做好。下面会告诉你怎么调。`
   }
 
   return { layer, yourValue, benchmarkValue, diff, rating, explanation, suggestion }
 }
 
-/**
- * 归因分析 —— 核心逻辑
- * 根据各层指标的好坏组合，推断根本问题
- */
 function attribute(
   diagnosis: FunnelLayerDiagnosis[],
   post: Post
@@ -108,15 +96,15 @@ function attribute(
 
   // 场景1: 曝光高但点击率低 → 封面/标题问题
   if (post.impressions > 1000 && ctrRating === 'poor') {
-    rootCause = '流量获取问题：封面和标题吸引力不足'
+    rootCause = '封面和标题不够吸引人，人家刷到了但不想点进来'
     attribution =
-      '曝光量足够，但封面点击率偏低。用户看到了你的帖子但没有点击，说明封面或标题不够吸引人。这是"流量浪费"——有曝光但没转化。'
+      '你的帖子被推给了不少人（曝光量不错），但大部分人划走了没点进来。这就好比你在街上摆了个摊，路过的人挺多，但你的招牌不够显眼，大家不知道你卖的啥、有啥好看的。换个说法——你的"门面"需要装修一下。'
     improvements.push({
       priority: 'high',
       category: '封面/标题',
       description:
-        '优化封面设计，使用高清、色彩鲜明、有情绪表达或对比效果的图片。标题要有"钩子"——数字、悬念、利益点、情绪词。',
-      referenceExample: '参考高CTR同题材素人帖的封面风格和标题结构',
+        '封面换个思路试试：颜色亮一点、对比强一点、让人一眼看到就想点。标题也是——用数字（"3个方法"）、用悬念（"第2个绝了"）、用情绪（"真的会谢"），让人忍不住想点进来看看到底是啥。',
+      referenceExample: '去看看同类里封面点击率高的素人帖子，看他们的封面长啥样、标题怎么写的',
     })
   }
 
@@ -125,56 +113,56 @@ function attribute(
     ctrRating === 'poor' &&
     (interactionRating === 'great' || followRating === 'great')
   ) {
-    rootCause = '内容质量很高，但封面/标题拖了后腿'
+    rootCause = '内容本身很棒，但被封面和标题耽误了'
     attribution =
-      '互动率和涨粉率都说明你的内容质量很好、有共鸣。但封面点击率低导致阅读量没上去。你只需要改进封面和标题，把流量引进来，数据会爆发。'
+      '告诉你一个好消息：你的内容质量真的很能打！点进来的人愿意点赞、收藏、关注你，这说明你的内容有料、有共鸣。但问题就出在——太多人根本不知道你内容这么好，因为封面和标题没把人"勾"进来。就像你做了超好吃的菜，但门帘遮得太严实，路人闻不到香味。把门帘掀开，流量就进来了。'
     improvements.push({
       priority: 'high',
       category: '封面/标题',
       description:
-        '你的内容本身没问题，重点是让更多人点进来。研究同类爆款封面：颜色搭配、文字排版、情绪传递。尝试A/B测试不同封面。',
+        '你的内容不用大改！集中火力搞封面。去看看那些跟你做同类内容、但点击率很高的普通人的帖子（别看大V，人家有粉丝基础）。学他们的封面配色、文字排版、那种"让人想点"的感觉。可以同一篇内容换不同封面多发几次试试。',
     })
   }
 
   // 场景3: 点击率高互动率低 → 内容质量不行
   if (ctrRating === 'great' && interactionRating === 'poor') {
-    rootCause = '内容质量问题：封面粉饰了实际内容'
+    rootCause = '标题封面很会"骗"人点进来，但内容没接住'
     attribution =
-      '封面和标题成功吸引了点击，但内容没能留住用户或激发互动。用户进来后发现内容和预期不符，或者内容不够有料。'
+      '你是个起标题和做封面的高手！点击率这么高说明你很会抓眼球。但用户点进来之后发现内容跟预期的差一截，或者看完觉得"就这？"——然后就划走了，没点赞没收藏。这就好比电影预告片剪得太精彩，正片反而让人失望了。问题不在你的"门面"，在你"店里的货"。'
     improvements.push({
       priority: 'high',
       category: '内容质量',
       description:
-        '提升内容信息密度，确保标题承诺的内容在正文中兑现。开头3秒必须有钩子。增加"干货感"或"情绪共鸣"，给用户点赞/收藏/评论的理由。',
-      referenceExample: '参考高互动率同题材素人帖的内容结构和节奏',
+        '标题答应了用户什么，内容就得真给。如果标题说"3个方法"，内容就别只给1个半。开头前3秒直接上干货，别铺垫。多加点"哇这个有用"、"原来是这样"的信息量，让人觉得不白看。结尾抛个问题让大家在评论区聊起来。',
+      referenceExample: '去看同类里互动率高的素人帖子，注意他们内容的结构和节奏',
     })
   }
 
   // 场景4: 互动率好涨粉率低 → 人设/IP问题
   if (interactionRating === 'great' && followRating === 'poor') {
-    rootCause = '人设/IP问题：内容有趣但没有持续关注价值'
+    rootCause = '内容挺有意思，但用户没觉得"值得关注你这个人"'
     attribution =
-      '用户喜欢这篇内容（高互动），但没有关注的冲动。这说明内容本身有吸引力，但没让用户觉得"这个人值得持续关注"。'
+      '大家喜欢你发的这篇内容——点赞收藏都挺多。但是他们关注的是"这篇内容"而不是"你这个人"。就像你讲了个很好笑的笑话，大家笑完就走了，没人问"你叫什么名字"。你需要让大家觉得：关注你之后，还能持续看到这么好的内容。'
     improvements.push({
       priority: 'high',
       category: '人设/IP',
       description:
-        '在内容中强化你的独特人设和定位。尝试系列化内容（例如"第X期"），让用户期待下一期。在结尾加关注引导，告诉用户关注你能获得什么持续价值。',
+        '在内容里多点"你"的存在感。可以做成系列——"第1期"、"第2期"这样，让人期待下一期。结尾加一句"关注我，下次带你XXX"。让用户觉得你是一个活生生的人，不是一个发帖机器。你的个性、你的说话方式、你的态度——这些才是让人想关注你的理由。',
     })
   }
 
-  // 场景5: 阅读完播率低
+  // 场景5: 完播率低
   if (completionRating === 'poor' && ctrRating !== 'poor') {
     if (!rootCause) {
-      rootCause = '内容节奏问题：用户进来了但看不下去'
+      rootCause = '用户点进来了，但没看完就走了'
       attribution =
-        '封面标题吸引了点击，但完播率低说明内容前几秒没留住人，或者中间节奏拖沓。用户进来后就划走了。'
+        '封面标题把人吸引进来了（这点做得好！），但内容没留住人。就像你开了个店，门口招牌很吸引人，客人进来了，但逛了两步觉得没意思就转身走了。问题很可能出在开头——要么开头太啰嗦，要么节奏太慢，要么信息密度不够。'
     }
     improvements.push({
       priority: 'high',
       category: '内容结构',
       description:
-        '优化开头3-5秒：用悬念、冲突、或直接切入主题。检查内容节奏是否有"废话"段落。图文帖子注意段落分明、信息有层次。视频帖子注意BGM和画面切换节奏。',
+        '开头3-5秒（或者前两段文字）直接上最吸引人的东西，别铺垫！视频的话试着把最精彩的画面放最前面。图文的话第一段就让人知道"这篇能给我什么"。中间不要有凑字数的废话段落，每段都让人有看下去的欲望。',
     })
   }
 
@@ -184,29 +172,27 @@ function attribute(
       priority: 'medium',
       category: '分享价值',
       description:
-        '内容缺乏"社交货币"——用户不会有冲动转发。增加干货总结（方便收藏转发）、共鸣金句（方便分享表达自己）、或者实用清单（方便发给朋友）。',
+        '你的内容可能缺少让人"想转给朋友"的冲动。想想你平时会转发什么？要么是"这个太有用了转给闺蜜"（实用干货），要么是"这就是我！"（情绪共鸣），要么是"笑死我了必须转"（有趣）。让你的内容带点这种属性。',
     })
   }
 
   // 默认归因
   if (!rootCause) {
     if (ctrRating === 'poor' && completionRating === 'poor' && interactionRating === 'poor') {
-      rootCause = '综合问题：选题或内容形式需要重新思考'
+      rootCause = '各方面都需要大调整——选题方向可能不太对'
       attribution =
-        '从曝光到转化的每个环节数据都不理想。这可能不是因为某一个环节的问题，而是选题本身不够吸引人，或者内容形式不适合你的目标用户。'
+        '从被人看到→点进来→看完→互动，每一步的数据都不太理想。别灰心，这不一定是你的问题，很可能是这个选题本身就不太讨喜，或者形式不太对。可以想想：你身边的朋友会对这个话题感兴趣吗？这个话题最近是不是大家都在讨论？换个角度试试。'
     } else {
-      rootCause = '部分环节有优化空间'
-      attribution =
-        '整体数据处于中等水平，需要在薄弱环节做针对性改进。'
+      rootCause = '整体还行，但有几个环节可以做得更好'
+      attribution = '数据中等偏上，不是不好，只是还没到让人眼前一亮的地步。下面针对薄弱的环节给一些具体的建议。'
     }
   }
 
-  // 通用改进建议
+  // 通用建议
   improvements.push({
     priority: 'low',
     category: '选题策略',
-    description:
-      '持续关注同类目热门话题和趋势标签，在选题阶段就确保有足够的受众基础。',
+    description: '平时多刷刷同类型的热门内容，看看大家在讨论什么、什么话题容易火。选题选对了，后面的事就轻松一半。',
   })
 
   return { rootCause, attribution, improvements }

@@ -20,7 +20,6 @@ interface FanAnalysisDetailProps {
 export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAnalysisDetailProps) {
   const benchmark = getBenchmark('default', 500)
 
-  // 粉丝增长稳定性
   const followerStability = useMemo(() => {
     const sorted = [...posts].sort(
       (a, b) => new Date(a.publishDate).getTime() - new Date(b.publishDate).getTime()
@@ -31,12 +30,11 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
       growthRates.reduce((s, r) => s + Math.pow(r - avg, 2), 0) / growthRates.length
     const cv = avg > 0 ? Math.sqrt(variance) / avg : 0
 
-    if (cv < 0.5) return { level: 'stable' as const, text: '粉丝增长稳定，每篇帖子表现均衡' }
-    if (cv < 1.0) return { level: 'moderate' as const, text: '粉丝增长有波动，存在爆款和普通帖子的差异' }
-    return { level: 'volatile' as const, text: '粉丝增长波动较大，建议寻找爆款帖子的共性并复制' }
+    if (cv < 0.5) return { level: 'stable' as const, text: '每篇涨粉都差不多，说明你的内容质量很稳定。这是好事——系统知道你是靠谱的创作者。' }
+    if (cv < 1.0) return { level: 'moderate' as const, text: '有些帖子涨粉好有些一般，有"爆款"和"普通款"的区别。去找找那些涨粉多的帖子做对了什么。' }
+    return { level: 'volatile' as const, text: '涨粉不太稳定，有时候很猛有时候基本不涨。建议重点研究那几篇涨粉多的帖子，复制它们的成功点。' }
   }, [posts])
 
-  // 粉丝价值评估
   const fanValue = useMemo(() => {
     const interactionScore =
       benchmark.avgInteractionRate > 0
@@ -49,12 +47,11 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
 
     const score = Math.round((interactionScore * 0.5 + growthScore * 0.5) * 100)
 
-    if (score > 120) return { score: Math.min(100, score), text: '粉丝互动活跃度和转化率均高于同类均值，粉丝质量高' }
-    if (score > 80) return { score, text: '粉丝互动和增长表现正常，与同类账号持平' }
-    return { score, text: '粉丝互动或增长低于同类均值，需要加强内容与粉丝的连接' }
+    if (score > 120) return { score: Math.min(100, score), text: '你的粉丝质量很不错！不光愿意跟你互动，还会主动关注你。这种粉丝最值钱——以后你推荐什么他们都更可能买单。' }
+    if (score > 80) return { score, text: '粉丝质量在正常水平，跟同类账号差不多。保持住就行，慢慢来。' }
+    return { score, text: '粉丝的互动意愿和关注意愿都比同类型账号低一些。可能你的内容缺少一点"个人魅力"——让粉丝不只是看内容，而是喜欢你这个人。' }
   }, [stats, benchmark])
 
-  // 粉丝画像与内容匹配度
   const contentMatch = useMemo(() => {
     const topicCounts: Record<string, number> = {}
     posts.forEach((p) => {
@@ -63,19 +60,18 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
     const totalTopics = Object.values(topicCounts).reduce((s, c) => s + c, 0)
     const topTopic = Object.entries(topicCounts).sort((a, b) => b[1] - a[1])[0]
 
-    if (!topTopic) return { match: 0, text: '暂无足够数据判断' }
+    if (!topTopic) return { match: 0, text: '数据还不太够，多发几篇再来看。' }
 
     const concentration = topTopic[1] / totalTopics
     const match = Math.round(concentration * 100)
 
-    if (match > 60) return { match, text: `核心话题「${topTopic[0]}」占比高，粉丝知道关注你能获得什么——定位清晰` }
-    if (match > 35) return { match, text: `主要话题「${topTopic[0]}」有一定聚焦度，但仍有分散——可进一步精简` }
-    return { match, text: '内容话题较分散，粉丝可能不清楚你的核心定位' }
+    if (match > 60) return { match, text: `你的内容基本都围绕「${topTopic[0]}」这个方向，粉丝很清楚关注你能得到什么。这种"人设清晰"的账号，后面变现的时候粉丝接受度更高——因为他们就是为了这个关注你的。` }
+    if (match > 35) return { match, text: `大部分内容在「${topTopic[0]}」方向，但也有一些偏离。可以再收一收，让粉丝对你的印象更聚焦。` }
+    return { match, text: '你发的内容话题有点散。粉丝可能不太清楚"你到底是做什么的"。如果粉丝对你的印象是模糊的，那他们关注的欲望也会模糊。' }
   }, [posts])
 
   return (
     <div className="space-y-6">
-      {/* 粉丝增长趋势 */}
       <Card>
         <h3 className="text-sm font-semibold text-gray-800 mb-4">粉丝增长分析</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
@@ -92,13 +88,13 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-400">流失（估）</p>
+            <p className="text-xs text-gray-400">流失（估算）</p>
             <p className="text-xl font-bold text-red-400">
               -{fanStickiness.newVsLostFollowers.lost}
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-400">粉丝增长趋势</p>
+            <p className="text-xs text-gray-400">增长趋势</p>
             <p
               className={`text-xl font-bold ${
                 stats.fanGrowthTrend > 0.05
@@ -109,18 +105,17 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
               }`}
             >
               {stats.fanGrowthTrend > 0.05
-                ? '↑ 上升'
+                ? '↑ 向上走'
                 : stats.fanGrowthTrend > -0.05
-                ? '→ 平缓'
-                : '↓ 下降'}
+                ? '→ 平稳'
+                : '↓ 往下掉'}
             </p>
           </div>
         </div>
 
-        {/* 增长稳定性 */}
         <div className="bg-gray-50 rounded-lg p-3 mb-3">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs text-gray-500">增长稳定性</span>
+            <span className="text-xs text-gray-500">增长稳不稳定？</span>
             <Badge
               variant={
                 followerStability.level === 'stable'
@@ -131,19 +126,18 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
               }
             >
               {followerStability.level === 'stable'
-                ? '稳定'
+                ? '挺稳定'
                 : followerStability.level === 'moderate'
-                ? '有波动'
-                : '波动大'}
+                ? '有时波动'
+                : '不太稳'}
             </Badge>
           </div>
           <p className="text-xs text-gray-500">{followerStability.text}</p>
         </div>
       </Card>
 
-      {/* 粉丝价值评估 */}
       <Card>
-        <h3 className="text-sm font-semibold text-gray-800 mb-4">粉丝价值评估</h3>
+        <h3 className="text-sm font-semibold text-gray-800 mb-4">你的粉丝值不值钱？</h3>
         <div className="flex items-end gap-3 mb-3">
           <span className="text-3xl font-bold text-gray-900">{fanValue.score}</span>
           <span className="text-gray-400 text-sm mb-1">/ 100</span>
@@ -162,9 +156,8 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
         <p className="text-sm text-gray-600 mt-2">{fanValue.text}</p>
       </Card>
 
-      {/* 内容匹配度 */}
       <Card>
-        <h3 className="text-sm font-semibold text-gray-800 mb-4">粉丝-内容匹配度</h3>
+        <h3 className="text-sm font-semibold text-gray-800 mb-4">粉丝眼里的你，够不够清晰？</h3>
         <div className="flex items-end gap-3 mb-3">
           <span className="text-3xl font-bold text-gray-900">{contentMatch.match}</span>
           <span className="text-gray-400 text-sm mb-1">/ 100</span>
@@ -183,7 +176,7 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
         <p className="text-sm text-gray-600 mt-2">{contentMatch.text}</p>
         <div className="mt-3 bg-blue-50 rounded-lg p-3">
           <p className="text-xs text-blue-700">
-            内容-粉丝匹配度高 = 吸引的粉丝与你的内容定位一致，后续变现时粉丝的接受度更高。匹配度低可能导致"虚假繁荣"——粉丝多但变现困难。
+            <strong>为什么这个重要？</strong>如果粉丝对你的印象是模糊的，那他们关注的意愿也会模糊。清晰=信任=后面你推荐东西他们愿意买。模糊="这人到底做啥的？"然后就取关了。这就是为什么有些号粉丝挺多但赚不到钱——粉丝不是冲"你这个人"来的。
           </p>
         </div>
       </Card>

@@ -25,11 +25,11 @@ export default function HomePage() {
         {/* Hero */}
         <div className="text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-            小红书数据分析工具
+            看不懂数据？我们来帮你看
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            上传你的帖子数据，一键生成完整的数据分析报告。看懂每篇帖子的真实表现，
-            找到流量密码，持续优化你的内容。
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+            不用学数据分析，不用研究算法。上传你的帖子数据，我们会像朋友一样告诉你：
+            哪篇做得好、哪篇有问题、问题出在哪、怎么改。
           </p>
         </div>
 
@@ -38,18 +38,33 @@ export default function HomePage() {
           {[
             {
               icon: '📊',
-              title: '漏斗分析',
-              desc: '曝光→点击→阅读→互动→转化，逐层拆解',
+              title: '逐层拆解每篇帖子',
+              desc: '从曝光→点击→看完→互动→关注，每一步都告诉你做得怎么样，跟同类比起来算什么水平。',
             },
             {
               icon: '🔍',
-              title: '归因诊断',
-              desc: '自动定位问题所在，给出可操作的改进建议',
+              title: '像朋友一样给你建议',
+              desc: '不会甩一堆术语给你。直接告诉你"封面可以怎么改"、"开头不够吸引人"这种听得懂的改进方向。',
             },
             {
               icon: '💡',
-              title: '素人参考',
-              desc: '看同类型普通创作者的爆款是怎么做的',
+              title: '看看普通人怎么做爆的',
+              desc: '不给你看大V的数据（人家有粉丝基础没法比）。给你看跟你一样的普通人是怎么做出爆款的。',
+            },
+            {
+              icon: '💬',
+              title: '评论区是在帮你还是害你？',
+              desc: '评论多不一定是好事。有时候评论区太热闹反而没人关注你了。帮你判断评论区是加分还是减分。',
+            },
+            {
+              icon: '🏠',
+              title: '你的账号健康吗？',
+              desc: '内容够不够垂直？粉丝粘不粘你？能不能开始接广变现了？全方位给你的账号做个体检。',
+            },
+            {
+              icon: '📝',
+              title: '一键生成分析报告',
+              desc: '所有分析汇总成一份报告，可以直接复制文案，方便自己复盘或者发给朋友帮你看。',
             },
           ].map((f) => (
             <div
@@ -58,7 +73,7 @@ export default function HomePage() {
             >
               <div className="text-3xl mb-3">{f.icon}</div>
               <h3 className="font-semibold text-gray-900 mb-1">{f.title}</h3>
-              <p className="text-sm text-gray-500">{f.desc}</p>
+              <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -67,12 +82,12 @@ export default function HomePage() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
           <FileUpload onDataLoaded={handleDataLoaded} />
           <div className="mt-6 flex items-center gap-4 justify-center">
-            <span className="text-sm text-gray-400">或者</span>
+            <span className="text-sm text-gray-400">还没有数据？</span>
             <button
               onClick={handleLoadSample}
               className="text-sm text-red-500 hover:text-red-600 font-medium"
             >
-              加载示例数据体验一下
+              先加载示例数据体验一下
             </button>
           </div>
         </div>

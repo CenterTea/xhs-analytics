@@ -22,32 +22,30 @@ export default function ViewingTimeAnalysis({
   const benchmarkWatchTime = benchmark.avgWatchTime
   const watchTimeDiff = benchmarkWatchTime > 0 ? (watchTime - benchmarkWatchTime) / benchmarkWatchTime : 0
 
-  // 评论区吸引力判断
-  const isCommentHeavy = commentRate > 0.02 // 评论率超过2%
-  const watchTimeHigh = watchTimeDiff > 0.4 // 观看时长超过均值40%
-  const conversionLow = followConversionRate < 0.005 // 涨粉率低于0.5%
+  const isCommentHeavy = commentRate > 0.02
+  const watchTimeHigh = watchTimeDiff > 0.4
+  const conversionLow = followConversionRate < 0.005
 
-  // 两个界限判断
   let commentBoundary: 'healthy' | 'warning' | 'danger' = 'healthy'
   let commentInsight = ''
 
   if (watchTimeHigh && isCommentHeavy && conversionLow) {
     commentBoundary = 'danger'
     commentInsight =
-      '观看时长显著高于同类均值，结合高评论率和低涨粉率来看，评论区可能过度吸引了用户注意力。用户在评论区投入了大量时间讨论，但对你的账号本身关注度不足——这就是"评论区喧宾夺主"。建议适当引导讨论方向，在内容中强化个人IP和关注引导。'
+      '大家在你帖子评论区聊得很嗨——这是好事也是坏事。好事是评论区确实热闹，大家愿意待在这儿；坏事是大家光顾着在评论区聊天了，聊完就走了，忘了关注你这个人。就像你开了个茶馆，大家在你店里聊得很开心，但没人记得茶馆老板是谁。建议你在评论区里多露露脸，或者置顶一条自己的评论引导大家关注你。'
   } else if (watchTimeHigh && isCommentHeavy) {
     commentBoundary = 'warning'
     commentInsight =
-      '观看时长和评论率都较高，评论区活跃是好事，但要警惕：如果涨粉转化率偏低，说明用户的注意力正在被评论区"吃掉"。建议在评论区顶部或置顶评论中加入关注引导，把讨论热情转化为关注行为。'
+      '大家在你这里待得挺久的，评论也挺热闹。但别大意——如果涨粉不多，说明用户在把你这当"聊天室"而不是"关注对象"。可以试着在评论区里回一回大家，顺便说一句"觉得有用可以关注我，后面还有"。把聊天的人变成关注你的人。'
   } else if (watchTimeHigh && !isCommentHeavy) {
     commentInsight =
-      '观看时长高于均值，且不是由评论区驱动的——这说明内容本身的信息密度和吸引力很强。用户是因为内容好而停留，这是最健康的时长增长模式。继续保持内容质量。'
+      '用户在你这儿待的时间比大多数同类内容都长，而且不是因为评论多——是因为你的内容本身好看、有料。这是最健康的情况！用户是真觉得你的内容值得花时间。继续保持这个内容的节奏和深度。'
   } else if (!watchTimeHigh && isCommentHeavy) {
     commentInsight =
-      '评论率较高但观看时长并未显著增长，说明评论内容偏向浅层互动（如@好友、简单表态），而非深度讨论。可以尝试在内容中留出更有讨论价值的"钩子"来引发深度评论。'
+      '评论挺多的，但用户停留时间并没有特别长。说明评论内容比较"浅"——比如大多是艾特别人、发个表情之类的。可以试试在内容结尾抛一个更有意思的问题，让大家不只是@朋友，而是真的想发表自己的看法。'
   } else {
     commentInsight =
-      '观看时长与评论率均处于正常范围。如果希望提升用户停留时长，可以增加内容的信息密度或在结尾设置互动问题。'
+      '观看时长和评论都在正常范围。想让人在你这里待更久？加点"信息量"——多给点干货，或者结尾留个有讨论空间的话题。人都是这样，看到有东西可聊就忍不住停下来。'
   }
 
   const formatTime = (seconds: number) => {
@@ -59,25 +57,23 @@ export default function ViewingTimeAnalysis({
 
   return (
     <div className="space-y-4">
-      {/* 观看时长 */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <p className="text-xs text-gray-400">平均观看时长</p>
+          <p className="text-xs text-gray-400">平均每人看多久</p>
           <p className="text-2xl font-bold text-gray-900">
             {avgWatchTime ? formatTime(avgWatchTime) : '-'}
           </p>
         </div>
         <div>
-          <p className="text-xs text-gray-400">总观看时长</p>
+          <p className="text-xs text-gray-400">总共被看了多久</p>
           <p className="text-2xl font-bold text-gray-900">
             {totalWatchTime ? formatTime(totalWatchTime) : '-'}
           </p>
         </div>
       </div>
 
-      {/* 与同类均值对比 */}
       <div>
-        <p className="text-xs text-gray-400 mb-2">平均观看时长 vs 同类均值</p>
+        <p className="text-xs text-gray-400 mb-2">和同类内容比，你的停留时长如何？</p>
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <ProgressBar
@@ -93,19 +89,18 @@ export default function ViewingTimeAnalysis({
         </div>
         <div className="flex justify-between mt-1">
           <span className="text-xs text-gray-500">
-            你的：{formatTime(watchTime)}
+            你：{formatTime(watchTime)}
           </span>
           <span className="text-xs text-gray-400">
-            均值：{formatTime(benchmarkWatchTime)}
+            大家平均：{formatTime(benchmarkWatchTime)}
           </span>
         </div>
       </div>
 
-      {/* 完播率 */}
       {completionRate !== undefined && (
         <div>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-gray-400">完播率</span>
+            <span className="text-xs text-gray-400">完播率（多少人看完了）</span>
             <span className="text-sm font-semibold">
               {(completionRate * 100).toFixed(1)}%
             </span>
@@ -122,12 +117,11 @@ export default function ViewingTimeAnalysis({
             }
           />
           <p className="text-xs text-gray-400 mt-1">
-            同类均值：{(benchmark.avgCompletionRate * 100).toFixed(1)}%
+            大家平均完播率：{(benchmark.avgCompletionRate * 100).toFixed(1)}%
           </p>
         </div>
       )}
 
-      {/* 评论区双重界限分析 */}
       <div
         className={`rounded-lg p-4 border ${
           commentBoundary === 'danger'
@@ -138,31 +132,31 @@ export default function ViewingTimeAnalysis({
         }`}
       >
         <div className="flex items-center gap-2 mb-2">
-          <h4 className="text-sm font-semibold text-gray-800">评论区与停留时长分析</h4>
+          <h4 className="text-sm font-semibold text-gray-800">评论区是在帮你还是害你？</h4>
           <Badge
             variant={
               commentBoundary === 'danger' ? 'poor' : commentBoundary === 'warning' ? 'normal' : 'great'
             }
           >
             {commentBoundary === 'danger'
-              ? '需注意'
+              ? '要注意了'
               : commentBoundary === 'warning'
-              ? '有风险'
-              : '健康'}
+              ? '有点风险'
+              : '挺健康'}
           </Badge>
         </div>
         <p className="text-sm text-gray-600 leading-relaxed">{commentInsight}</p>
 
         <div className="mt-3 pt-3 border-t border-gray-200/50">
           <p className="text-xs text-gray-500">
-            <strong className="text-gray-600">评论区双重界限说明：</strong>
+            <strong className="text-gray-600">评论区是把双刃剑：</strong>
           </p>
           <ul className="text-xs text-gray-500 mt-1 space-y-1">
             <li>
-              · <span className="text-green-600">健康的评论</span>：增加用户停留，提升内容权重，同时用户仍然关注账号本身 → 涨粉率正常
+              · <span className="text-green-600">用得好：</span>大家聊得开心同时记得关注你 → 停留时长和涨粉率都不错 👍
             </li>
             <li>
-              · <span className="text-red-500">过度的评论</span>：用户注意力被评论区"吃掉"，讨论热烈但不关注你 → 涨粉率明显偏低
+              · <span className="text-red-500">用得不好：</span>大家光顾着在评论区吵架/聊天，忘了你是谁 → 停留时长长的但没人关注你 😅
             </li>
           </ul>
         </div>
