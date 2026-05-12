@@ -97,7 +97,7 @@ export default function HomePage() {
                   <ol className="text-sm text-gray-600 space-y-1.5 list-decimal list-inside">
                     <li>电脑打开 <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">creator.xiaohongshu.com</code></li>
                     <li>APP 扫码登录 → 左侧「数据看板」→「内容分析」</li>
-                    <li>点击「导出报表」下载 xlsx 文件</li>
+                    <li>点击「导出数据」下载 xlsx 文件</li>
                   </ol>
                   <p className="text-xs text-gray-400 mt-2">
                     或使用 <a href="https://github.com/iSk2y/xhs-creator-export" target="_blank" rel="noopener noreferrer" className="text-red-500 hover:underline">xhs-creator-export</a> 插件导出更全的数据

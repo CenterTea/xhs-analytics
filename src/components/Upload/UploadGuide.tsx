@@ -25,7 +25,7 @@ export default function UploadGuide() {
                   <li>电脑浏览器打开 <code className="bg-white px-1 rounded border">creator.xiaohongshu.com</code></li>
                   <li>用小红书 APP 扫码登录</li>
                   <li>左侧菜单点「数据看板」→「内容分析」</li>
-                  <li>点击「导出报表」→ 下载 <strong>xlsx</strong> 文件</li>
+                  <li>点击「导出数据」→ 下载 <strong>xlsx</strong> 文件</li>
                   <li>直接把下载的 xlsx 文件上传到本工具即可</li>
                 </ol>
                 <p className="text-xs text-gray-400 mt-1">
