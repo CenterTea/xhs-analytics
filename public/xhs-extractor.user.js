@@ -627,16 +627,19 @@
                 const spans = el.querySelectorAll('span');
                 for (const span of spans) {
                     const text = span.textContent.trim();
-                    // 排除短文本、纯数字、包含特定关键词的
+                    // 排除短文本、纯数字、日期格式、包含特定关键词的
                     if (text.length > maxSpanText.length &&
                         text.length < 1000 &&
                         text !== author &&
                         !text.match(/^\d+$/) &&
+                        !text.match(/^\d{4}-\d{2}-\d{2}$/) && // 排除日期格式
+                        !text.match(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}$/) && // 排除带时间的日期
                         !text.includes('赞') &&
                         !text.includes('回复') &&
                         !text.includes('展开') &&
                         !text.includes('@') &&
-                        !text.includes('IP属地')) {
+                        !text.includes('IP属地') &&
+                        !text.includes('编辑于')) {
                         maxSpanText = text;
                     }
                 }
@@ -667,12 +670,12 @@
 
                 // 提取点赞数
                 let likes = 0;
-                // 查找包含数字的元素，且该数字旁边可能有"赞"字或图标
-                const allElements = el.querySelectorAll('span, div');
-                for (const elem of allElements) {
+                // 方法1: 查找包含"赞"字的元素
+                const likeElements = el.querySelectorAll('span, div');
+                for (const elem of likeElements) {
                     const text = elem.textContent.trim();
-                    // 匹配纯数字或"X赞"格式
-                    const numMatch = text.match(/^(\d+)$/) || text.match(/^(\d+)赞$/);
+                    // 匹配"X赞"格式
+                    const numMatch = text.match(/^(\d+)赞$/);
                     if (numMatch) {
                         const num = parseInt(numMatch[1]);
                         if (num < 100000) {
@@ -681,11 +684,22 @@
                         }
                     }
                 }
+                // 方法2: 如果没找到，查找元素属性或aria-label
+                if (likes === 0) {
+                    const likeBtn = el.querySelector('[class*="like"] button, [class*="赞"]');
+                    if (likeBtn) {
+                        const ariaLabel = likeBtn.getAttribute('aria-label');
+                        if (ariaLabel) {
+                            const match = ariaLabel.match(/(\d+)/);
+                            if (match) likes = parseInt(match[1]);
+                        }
+                    }
+                }
 
                 // 清理内容
                 content = content.replace(/回复\s*$/, '').trim();
 
-                console.log('[小红书数据提取器] 处理评论:', { author: author.substring(0, 20), content: content.substring(0, 50), likes });
+                // console.log('[小红书数据提取器] 处理评论:', { author: author.substring(0, 20), content: content.substring(0, 50), likes });
 
                 // 去重检查（需要同时有作者和内容）
                 if (content && content.length > 0) {
@@ -693,10 +707,10 @@
                     if (!seenContents.has(uniqueKey)) {
                         seenContents.add(uniqueKey);
                         comments.push({ author, content, likes });
-                        console.log('[小红书数据提取器] ✓ 添加评论:', author, content.substring(0, 30));
+                        // console.log('[小红书数据提取器] ✓ 添加评论:', author, content.substring(0, 30));
                     }
                 } else {
-                    console.log('[小红书数据提取器] ✗ 跳过：无内容', { author, textPreview: el.textContent.substring(0, 100) });
+                    // console.log('[小红书数据提取器] ✗ 跳过：无内容', { author, textPreview: el.textContent.substring(0, 100) });
                 }
             } catch (e) {
                 console.log('[小红书数据提取器] 处理元素出错:', e);
