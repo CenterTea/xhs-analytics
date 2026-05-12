@@ -707,31 +707,36 @@
                 // 提取点赞数
                 let likes = 0;
 
-                // 方法1: 查找包含"赞"字的元素
-                const likeElements = el.querySelectorAll('span, div');
-                for (const elem of likeElements) {
+                // 辅助函数：提取数字
+                function extractNumber(text) {
+                    const match = text.match(/(\d+)/);
+                    return match ? parseInt(match[1]) : 0;
+                }
+
+                // 方法1: 查找包含"赞"字的元素（最准确）
+                const allElements = el.querySelectorAll('*');
+                for (const elem of allElements) {
                     const text = elem.textContent.trim();
-                    // 匹配"X赞"格式
-                    const numMatch = text.match(/^(\d+)赞$/);
-                    if (numMatch) {
-                        const num = parseInt(numMatch[1]);
-                        if (num < 100000) {
+                    // 匹配"X赞"格式或包含"赞"的aria-label
+                    if (/^\d+赞$/.test(text) || elem.getAttribute?.('aria-label')?.includes('赞')) {
+                        const num = extractNumber(text) || extractNumber(elem.getAttribute('aria-label') || '');
+                        if (num > 0 && num < 100000) {
                             likes = num;
                             break;
                         }
                     }
                 }
 
-                // 方法2: 查找可能包含点赞数的纯数字元素（在评论区域内）
+                // 方法2: 如果没找到，尝试从最后一个数字span获取（通常点赞数在末尾）
                 if (likes === 0) {
-                    const allSpans = el.querySelectorAll('span');
-                    for (const span of allSpans) {
-                        const text = span.textContent.trim();
-                        // 匹配纯数字，且在合理范围内
+                    const spans = Array.from(el.querySelectorAll('span'));
+                    // 从后往前找
+                    for (let i = spans.length - 1; i >= 0; i--) {
+                        const text = spans[i].textContent.trim();
+                        // 纯数字，不是日期，且在合理范围内
                         if (/^\d+$/.test(text)) {
                             const num = parseInt(text);
-                            // 点赞数通常在0-10000之间，且不是日期
-                            if (num >= 0 && num <= 10000 && !isDate(text)) {
+                            if (num >= 0 && num <= 50000 && !isDate(text)) {
                                 likes = num;
                                 break;
                             }
@@ -739,18 +744,34 @@
                     }
                 }
 
-                // 方法3: 通过aria-label查找
+                // 方法3: 查找包含点赞图标的元素
                 if (likes === 0) {
-                    const likeBtn = el.querySelector('[class*="like"] button, [class*="赞"], [aria-label*="赞"]');
-                    if (likeBtn) {
-                        const ariaLabel = likeBtn.getAttribute('aria-label');
-                        if (ariaLabel) {
-                            const match = ariaLabel.match(/(\d+)/);
-                            if (match) {
-                                const num = parseInt(match[1]);
-                                if (num < 100000) likes = num;
+                    const likeIcon = el.querySelector('svg[class*="like"], svg[class*="赞"], [class*="like"] svg, [class*="赞"] svg');
+                    if (likeIcon) {
+                        // 查找图标旁边的数字
+                        let sibling = likeIcon.parentElement;
+                        while (sibling) {
+                            const text = sibling.textContent.trim();
+                            const numMatch = text.match(/^(\d+)$/);
+                            if (numMatch) {
+                                const num = parseInt(numMatch[1]);
+                                if (num >= 0 && num < 100000) {
+                                    likes = num;
+                                    break;
+                                }
                             }
+                            sibling = sibling.nextElementSibling;
                         }
+                    }
+                }
+
+                // 方法4: 通过aria-label查找
+                if (likes === 0) {
+                    const likeBtn = el.querySelector('[aria-label*="赞"], [aria-label*="like"]');
+                    if (likeBtn) {
+                        const ariaLabel = likeBtn.getAttribute('aria-label') || '';
+                        const num = extractNumber(ariaLabel);
+                        if (num > 0 && num < 100000) likes = num;
                     }
                 }
 
