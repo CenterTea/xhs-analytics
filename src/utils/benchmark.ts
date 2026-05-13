@@ -176,3 +176,20 @@ export function getBenchmark(
 export function getAllBenchmarks(): Benchmark[] {
   return benchmarks
 }
+
+/** 将自动分类的内容类型映射到 benchmark categoryId */
+export function mapCategoryToBenchmark(categoryName: string): { categoryId: string; categoryName: string } {
+  const mapping: Record<string, string> = {
+    '美妆护肤': 'beauty', '穿搭分享': 'fashion', '美食探店': 'food',
+    '旅行攻略': 'travel', '家居生活': 'lifestyle', '职场成长': 'knowledge',
+    '健身运动': 'lifestyle', '情感心理': 'knowledge', '艺术创作': 'lifestyle',
+    '宠物萌宠': 'lifestyle', '数码科技': 'knowledge', '学习教育': 'knowledge',
+    '娱乐生活': 'lifestyle', '母婴育儿': 'default', '其他话题': 'default',
+  }
+  const benchmarkNames: Record<string, string> = {
+    'beauty': '美妆护肤', 'fashion': '穿搭', 'food': '美食', 'travel': '旅行',
+    'lifestyle': '生活/Vlog', 'knowledge': '知识/干货', 'default': '通用',
+  }
+  const catId = mapping[categoryName] || 'default'
+  return { categoryId: catId, categoryName: benchmarkNames[catId] || '通用' }
+}

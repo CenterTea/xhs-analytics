@@ -8,7 +8,7 @@ import FunnelChart from '../components/Funnel/FunnelChart'
 import FunnelLayer from '../components/Funnel/FunnelLayer'
 import InteractionAnalysis from '../components/Funnel/InteractionAnalysis'
 import { Link } from 'react-router-dom'
-import { getBenchmark } from '../utils/benchmark'
+import { getBenchmark, mapCategoryToBenchmark } from '../utils/benchmark'
 import { getContentClassification } from '../utils/account-analyzer'
 import type { Post } from '../types'
 
@@ -27,7 +27,10 @@ function calculateTotalPercentile(totalValue: number, postCount: number, benchma
 export default function DashboardPage() {
   const { posts, accountStats, getDiagnosis } = useData()
   const navigate = useNavigate()
-  const benchmark = getBenchmark('default', 500)
+  const classification = getContentClassification(posts)
+  const firstReal = classification.categories.find(c => c.name !== '其他话题')
+  const benchmarkMatch = firstReal ? mapCategoryToBenchmark(firstReal.name) : { categoryId: 'default', categoryName: '通用' }
+  const benchmark = getBenchmark(benchmarkMatch.categoryId, 500)
   const n = posts.length
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
 
@@ -46,7 +49,6 @@ export default function DashboardPage() {
   }
 
   const diagnosis = selectedPost ? getDiagnosis?.(selectedPost) : null
-  const classification = getContentClassification(posts)
 
   const avgImpressions = Math.round(posts.reduce((s, p) => s + p.impressions, 0) / n)
   const avgViews = Math.round(posts.reduce((s, p) => s + p.views, 0) / n)
@@ -140,10 +142,15 @@ export default function DashboardPage() {
             <div className="bg-white rounded-lg p-3 mb-3 border border-blue-100">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded">当前匹配</span>
-                <span className="text-sm font-medium text-gray-900">{benchmark.categoryName} · {benchmark.followerRange}粉丝</span>
+                <span className="text-sm font-medium text-gray-900">{benchmarkMatch.categoryName} · {benchmark.followerRange}粉丝</span>
+                {firstReal && firstReal.name !== '其他话题' && (
+                  <span className="text-xs text-gray-400">
+                    （自动识别: {firstReal.name}{classification.categories[0]?.name === '其他话题' ? '' : ` · ${Math.round(firstReal.percentage)}%`}）
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-600">
-                系统根据你当前的内容类型（{benchmark.categoryName}）和粉丝量级（{benchmark.followerRange}）匹配对应的基准数据。
+                系统自动分析了你 {posts.length} 条帖子的标题，识别出主要内容类型为「{benchmarkMatch.categoryName}」（{firstReal ? `占比 ${Math.round(firstReal.percentage)}%` : '未识别到具体领域'}），并匹配该类型的基准数据进行对比。
               </p>
             </div>
 
