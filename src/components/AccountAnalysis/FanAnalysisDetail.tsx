@@ -3,7 +3,8 @@ import type { Post, AccountStats } from '../../types'
 import Card from '../ui/Card'
 import ProgressBar from '../ui/ProgressBar'
 import Badge from '../ui/Badge'
-import { getBenchmark } from '../../utils/benchmark'
+import { getBenchmark, mapCategoryToBenchmark } from '../../utils/benchmark'
+import { classifyContent } from '../../utils/content-classifier'
 
 interface FanAnalysisDetailProps {
   posts: Post[]
@@ -18,7 +19,12 @@ interface FanAnalysisDetailProps {
 }
 
 export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAnalysisDetailProps) {
-  const benchmark = getBenchmark('default', 500)
+  // 动态匹配 benchmark，与 Dashboard 保持一致
+  const titles = posts.map(p => p.title).filter(Boolean)
+  const classification = classifyContent(titles)
+  const firstReal = classification.categories.find(c => c.name !== '其他话题')
+  const benchmarkMatch = firstReal ? mapCategoryToBenchmark(firstReal.name) : { categoryId: 'default', categoryName: '通用' }
+  const benchmark = getBenchmark(benchmarkMatch.categoryId, 500)
 
   const followerStability = useMemo(() => {
     const sorted = [...posts].sort(
