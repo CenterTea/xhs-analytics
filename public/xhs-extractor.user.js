@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小红书帖子数据提取器
 // @namespace    http://tampermonkey.net/
-// @version      1.9
+// @version      2.0
 // @description  提取小红书帖子数据并发送到数据分析工具
 // @author       You
 // @match        https://www.xiaohongshu.com/*
@@ -643,338 +643,52 @@
             }
         }
 
-        // 使用精确的选择器提取评论
-        // 小红书的评论结构：父评论 + 子评论（楼中楼）
-        const commentSelectors = [
-            // 主要评论容器选择器 - 小红书常见的评论项class
-            '[class*="comment-item"]',
-            '[class*="CommentItem"]',
-            'div[class*="comment-"] > div',
-            '[class*="note-comment"] > div',
-            '.comments-container > div > div',
-            '#comment-container > div > div'
-        ];
+        // ===== 用精确选择器提取评论 =====
+        // 优先使用小红书已知的 DOM 结构：.comment-inner-container
+        let containers = document.querySelectorAll('.comment-inner-container');
+        console.log('[小红书数据提取器] 找到 comment-inner-container:', containers.length);
 
-        let commentElements = [];
-        for (const selector of commentSelectors) {
+        if (containers.length === 0) {
+            // 备选：旧的选择器
+            containers = document.querySelectorAll('[class*="comment-item"]');
+            console.log('[小红书数据提取器] 备选 [class*="comment-item"]:', containers.length);
+        }
+
+        containers.forEach(el => {
             try {
-                const elements = document.querySelectorAll(selector);
-                if (elements.length > 0) {
-                    console.log('[小红书数据提取器] 尝试选择器:', selector, '找到', elements.length, '个元素');
-                    if (elements.length > 3) { // 至少要有几条评论才算找到
-                        commentElements = elements;
-                        console.log('[小红书数据提取器] ✓ 使用选择器:', selector);
-                        break;
-                    }
-                }
-            } catch (e) {}
-        }
+                // 作者：.author-wrapper .name a
+                const authorEl = el.querySelector('.author-wrapper .name, .author .name, a.name');
+                const author = authorEl ? authorEl.textContent.trim().split(/\s+/)[0] : '未知用户';
+                if (!author || author.length > 50) return;
 
-        // 如果上面的选择器没找到，使用备选方案
-        if (commentElements.length === 0) {
-            // 查找评论区域
-            const commentSection = document.querySelector('#comment-container, [class*="comment-list"], [class*="comments-list"], [class*="comment-section"]');
-            console.log('[小红书数据提取器] 评论区域元素:', commentSection);
-            if (commentSection) {
-                // 查找直接子元素
-                const allDivs = commentSection.querySelectorAll(':scope > div');
-                console.log('[小红书数据提取器] 评论区子元素:', allDivs.length);
-                commentElements = Array.from(allDivs);
-            }
-        }
+                // 内容：.content .note-text span
+                const contentEl = el.querySelector('.content .note-text, .content span');
+                const content = contentEl ? contentEl.textContent.trim() : '';
+                if (!content || content.length < 1 || content.length > 2000) return;
+                // 跳过纯数字（日期、点赞数）和 IP 属地
+                if (/^\d+$/.test(content)) return;
+                if (/^\d{2}-\d{2}$/.test(content)) return;
+                if (/^(北京|上海|广东|浙江|江苏|四川|重庆|湖北|湖南|福建|山东|河南|河北|辽宁|天津|陕西|甘肃|新疆|西藏|宁夏|内蒙古|广西|云南|贵州|海南|吉林|黑龙江|安徽|江西|山西|中国香港|中国澳门|中国台湾|海外|其他)$/.test(content)) return;
 
-        // 备选：从整个页面找所有可能包含用户头像和评论内容的块
-        if (commentElements.length === 0) {
-            console.log('[小红书数据提取器] 尝试从用户链接定位...');
-            const allComments = [];
-            const possibleComments = document.querySelectorAll('a[href*="user"]');
-            console.log('[小红书数据提取器] 找到用户链接:', possibleComments.length);
-            possibleComments.forEach(a => {
-                const parent = a.closest('div[class]');
-                if (parent) {
-                    const siblingDivs = parent.querySelectorAll(':scope > div');
-                    if (siblingDivs.length >= 2) {
-                        allComments.push(parent);
-                    }
-                }
-            });
-            console.log('[小红书数据提取器] 从用户链接定位到:', allComments.length);
-            if (allComments.length > 0) {
-                commentElements = allComments;
-            }
-        }
-
-        console.log('[小红书数据提取器] 最终找到评论元素:', commentElements.length);
-
-        // 终极备选：直接查找包含"回复"文本的元素，其父元素可能是评论
-        if (commentElements.length === 0) {
-            console.log('[小红书数据提取器] 尝试终极备选方案...');
-            const replyLinks = document.querySelectorAll('div, span');
-            const commentContainers = new Set();
-            replyLinks.forEach(el => {
-                if (el.textContent.trim() === '回复') {
-                    // 向上查找3层父元素
-                    let parent = el;
-                    for (let i = 0; i < 3; i++) {
-                        parent = parent.parentElement;
-                        if (!parent) break;
-                    }
-                    if (parent) {
-                        commentContainers.add(parent);
-                    }
-                }
-            });
-            if (commentContainers.size > 0) {
-                commentElements = Array.from(commentContainers);
-                console.log('[小红书数据提取器] 从"回复"按钮找到:', commentElements.length);
-            }
-        }
-
-        // 如果还是没找到，输出页面结构帮助调试
-        if (commentElements.length === 0) {
-            console.log('[小红书数据提取器] ❌ 未找到评论元素，输出页面结构供分析...');
-            // 查找所有可能包含评论的容器
-            const allDivs = document.querySelectorAll('div');
-            let potentialContainers = [];
-            allDivs.forEach(div => {
-                if (div.children.length >= 3 && div.children.length <= 10) {
-                    const text = div.textContent;
-                    if (text.length > 20 && text.length < 1000) {
-                        const links = div.querySelectorAll('a');
-                        if (links.length >= 1 && links.length <= 3) {
-                            potentialContainers.push({
-                                element: div,
-                                text: text.substring(0, 100),
-                                childCount: div.children.length
-                            });
-                        }
-                    }
-                }
-            });
-            console.log('[小红书数据提取器] 可能的评论容器:', potentialContainers.slice(0, 5));
-        }
-
-        commentElements.forEach(el => {
-            try {
-                // 跳过非评论元素（如广告、推荐等）
-                if (el.querySelector('img[src*="ad"]') || el.textContent.length > 3000) return;
-
-                // 提取作者 - 第一个用户链接或包含用户名的元素
-                let author = '';
-                const authorSelectors = [
-                    'a[href*="user"]',
-                    'a[class*="name"]',
-                    'a[class*="author"]',
-                    '[class*="username"]',
-                    'span[class*="name"]'
-                ];
-
-                for (const sel of authorSelectors) {
-                    const authorEl = el.querySelector(sel);
-                    if (authorEl) {
-                        const text = authorEl.textContent.trim();
-                        // 放宽条件：只要有文本，长度合理即可
-                        if (text && text.length > 0 && text.length < 100) {
-                            // 如果包含空格，只取第一部分（通常是昵称）
-                            author = text.split(/\s+/)[0];
-                            break;
-                        }
-                    }
-                }
-
-                // 如果还是没有找到作者，尝试从元素的第一个子元素获取
-                if (!author) {
-                    const firstLink = el.querySelector('a');
-                    if (firstLink) {
-                        const text = firstLink.textContent.trim();
-                        if (text && text.length > 0 && text.length < 100) {
-                            author = text.split(/\s+/)[0];
-                        }
-                    }
-                }
-
-                // 如果没有找到作者，使用默认名称
-                if (!author) {
-                    author = '未知用户';
-                }
-
-                // 提取评论内容 - 直接从元素的所有文本中提取
-                let content = '';
-
-                // 方法1: 获取元素内所有直接文本节点（排除子元素的文本）
-                const allText = el.textContent;
-
-                // 辅助函数：检查是否是日期
-                function isDate(text) {
-                    return /^\d{4}[\-\/年]\d{1,2}[\-\/月]\d{1,2}/.test(text) ||  // 2025-12-24, 2025/12/24, 2025年12月24日
-                           /^\d{4}[\-\/]\d{1,2}[\-\/]\d{1,2}\s+\d{1,2}:\d{2}/.test(text) ||  // 带时间的日期
-                           /^\d{1,2}[\-\/月]\d{1,2}[日]?$/.test(text);  // 12-24, 12月24日
-                }
-
-                // 辅助函数：检查是否是有效评论内容
-                function isValidComment(text) {
-                    if (!text || text.length <= 1) return false;
-                    if (text === author) return false;
-                    if (text.match(/^\d+$/)) return false;  // 纯数字
-                    if (isDate(text)) return false;  // 日期
-                    if (text.includes('赞') && text.match(/^\d+赞$/)) return false;  // "X赞"
-                    if (text.includes('回复') && text.length < 10) return false;  // 短回复提示
-                    if (text.includes('展开') && text.includes('回复')) return false;  // 展开按钮
-                    if (text.includes('@')) return false;  // @用户名
-                    if (text.includes('IP属地')) return false;
-                    if (text.includes('编辑于')) return false;
-                    if (text.length > 1000) return false;  // 太长
-                    return true;
-                }
-
-                // 方法2: 查找最长的span文本作为评论内容
-                let maxSpanText = '';
-                const spans = el.querySelectorAll('span');
-                for (const span of spans) {
-                    const text = span.textContent.trim();
-                    if (isValidComment(text) && text.length > maxSpanText.length) {
-                        maxSpanText = text;
-                    }
-                }
-
-                if (maxSpanText.length > 1) {
-                    content = maxSpanText;
-                }
-
-                // 方法3: 如果还没找到，尝试获取div的文本
-                if (!content) {
-                    const divs = el.querySelectorAll('div');
-                    for (const div of divs) {
-                        const text = div.textContent.trim();
-                        if (isValidComment(text) && text.length > content.length) {
-                            // 检查是否以作者名开头（通常是作者信息行）
-                            if (!text.startsWith(author)) {
-                                content = text;
-                            }
-                        }
-                    }
-                }
-
-                // 提取点赞数
+                // 点赞数：.interactions .like .count
+                const likeEl = el.querySelector('.interactions .like .count, .like .count, .like-wrapper .count');
                 let likes = 0;
-                const debugInfo = []; // 收集调试信息
-
-                // 辅助函数：提取数字
-                function extractNumber(text) {
-                    const match = text.match(/(\d+)/);
-                    return match ? parseInt(match[1]) : 0;
+                if (likeEl) {
+                    const m = likeEl.textContent.trim().match(/(\d+)/);
+                    if (m) likes = parseInt(m[1]);
                 }
 
-                // 先输出这个元素的所有文本内容，帮助调试
-                const allSpans = el.querySelectorAll('span');
-                const allTexts = Array.from(allSpans).map(s => s.textContent.trim()).filter(t => t.length > 0);
+                // 去重
+                const key = `${author}:${content.slice(0, 40)}`;
+                if (seenContents.has(key)) return;
+                seenContents.add(key);
 
-                // 方法1: 查找明确的"X赞"格式（最准确）
-                for (const span of allSpans) {
-                    const text = span.textContent.trim();
-                    if (/^\d+赞$/.test(text)) {
-                        likes = extractNumber(text);
-                        debugInfo.push(`方法1-明确赞格式: ${likes}`);
-                        break;
-                    }
-                }
-
-                // 方法2: 查找包含"赞"字aria-label的元素
-                if (likes === 0) {
-                    for (const span of allSpans) {
-                        const ariaLabel = span.getAttribute('aria-label');
-                        if (ariaLabel && ariaLabel.includes('赞')) {
-                            const num = extractNumber(ariaLabel);
-                            if (num > 0) {
-                                likes = num;
-                                debugInfo.push(`方法2-aria-label: ${likes} (${ariaLabel})`);
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // 方法3: 从后往前找纯数字（排除已知的非点赞数字）
-                if (likes === 0) {
-                    for (let i = allSpans.length - 1; i >= 0; i--) {
-                        const text = allSpans[i].textContent.trim();
-                        // 只匹配纯数字
-                        if (/^\d+$/.test(text)) {
-                            const num = parseInt(text);
-                            // 排除明显不是点赞数的数字（如日期、ID等）
-                            if (num > 0 && num < 100000 && !isDate(text)) {
-                                // 检查这个span后面是否有"赞"字或点赞图标
-                                const nextSibling = allSpans[i].nextElementSibling;
-                                const parentText = allSpans[i].parentElement?.textContent || '';
-                                const hasLikeContext = parentText.includes('赞') ||
-                                                       nextSibling?.textContent?.includes('赞');
-
-                                if (hasLikeContext) {
-                                    likes = num;
-                                    debugInfo.push(`方法3-纯数字+赞上下文: ${likes}`);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 方法4: 查找点赞图标附近的数字
-                if (likes === 0) {
-                    // 查找所有可能包含点赞图标的元素
-                    const possibleLikeElements = el.querySelectorAll('[class*="like"], [class*="赞"], svg');
-                    for (const likeEl of possibleLikeElements) {
-                        // 检查父元素中的数字
-                        const parent = likeEl.parentElement;
-                        if (parent) {
-                            const siblingSpans = parent.querySelectorAll('span');
-                            for (const span of siblingSpans) {
-                                const text = span.textContent.trim();
-                                if (/^\d+$/.test(text)) {
-                                    const num = parseInt(text);
-                                    if (num >= 0 && num < 100000) {
-                                        likes = num;
-                                        debugInfo.push(`方法4-图标附近: ${likes}`);
-                                        break;
-                                    }
-                                }
-                            }
-                            if (likes > 0) break;
-                        }
-                    }
-                }
-
-                // 如果还没找到，记录调试信息
-                if (likes === 0) {
-                    console.log('[小红书数据提取器] 未找到点赞数，元素文本:', allTexts.slice(-5));
-                } else {
-                    console.log('[小红书数据提取器] 点赞数:', likes, '调试:', debugInfo.join(' | '));
-                }
-
-                // 清理内容
-                content = content.replace(/回复\s*$/, '').trim();
-
-                // console.log('[小红书数据提取器] 处理评论:', { author: author.substring(0, 20), content: content.substring(0, 50), likes });
-
-                // 去重检查（需要同时有作者和内容）
-                if (content && content.length > 0) {
-                    const uniqueKey = `${author}:${content.slice(0, 30)}`;
-                    if (!seenContents.has(uniqueKey)) {
-                        seenContents.add(uniqueKey);
-                        comments.push({ author, content, likes });
-                        // console.log('[小红书数据提取器] ✓ 添加评论:', author, content.substring(0, 30));
-                    }
-                } else {
-                    // console.log('[小红书数据提取器] ✗ 跳过：无内容', { author, textPreview: el.textContent.substring(0, 100) });
-                }
-            } catch (e) {
-                console.log('[小红书数据提取器] 处理元素出错:', e);
-            }
+                comments.push({ author, content, likes });
+            } catch (e) {}
         });
 
         console.log('[小红书数据提取器] 共提取有效评论:', comments.length);
 
-        // 按点赞数排序
         return comments.sort((a, b) => b.likes - a.likes).slice(0, MAX_COMMENTS);
     }
 
