@@ -548,16 +548,17 @@ export default function PostAnalysisPage() {
 
             <div className="bg-white rounded-lg p-3 mb-3 border border-amber-100">
               <p className="text-sm font-medium text-amber-900 mb-2">步骤3：打开任意帖子</p>
+              <div className="bg-red-50 p-2 rounded border border-red-200 mb-3">
+                <p className="text-red-700 font-medium">⚠️ 重要说明</p>
+                <p className="text-red-600 mt-1">在想要打开的帖子处<strong>右键点击选取"在新标签页打开链接"</strong>，然后再分析。</p>
+                <p className="text-red-600 mt-1">由于小红书反爬虫机制，数据提取需要分批进行，请耐心等待，不要关闭页面。</p>
+              </div>
               <div className="text-xs text-amber-700 space-y-1">
                 <p>• 打开任意小红书帖子页面（如 xiaohongshu.com/explore/xxxxx）</p>
                 <p>• 等待页面完全加载（约2-3秒）</p>
                 <p>• 页面右上角会出现红色按钮"📊 分析此帖"</p>
-                <p>• 点击按钮，脚本会自动滚动加载评论（最多500条）</p>
+                <p>• 点击按钮，脚本会自动分批滚动加载评论（最多500条）</p>
                 <p>• 数据提取完成后，会自动跳转到本页面并显示分析结果</p>
-                <div className="bg-red-50 p-2 rounded border border-red-200 mt-2">
-                  <p className="text-red-700 font-medium">⚠️ 重要说明</p>
-                  <p className="text-red-600 mt-1">在想要打开的帖子处<strong>右键点击选取"在新标签页打开链接"</strong>，然后再分析，需要加载一会儿。</p>
-                </div>
               </div>
             </div>
           </div>
