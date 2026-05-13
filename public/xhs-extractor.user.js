@@ -492,7 +492,7 @@
                     const raw = parseFloat(match[1]);
                     if (raw > 0 && raw < 100000000) {
                         // 判断单位：>10000 大概率是毫秒
-                        const seconds = raw > 10000 ? Math.round(raw / 1000) : Math.round(raw);
+                        const seconds = raw > 10000 ? Math.floor(raw / 1000) : Math.round(raw);
                         if (seconds > 0 && seconds < 36000) {
                             foundDuration = seconds;
                             console.log('[小红书数据提取器] 找到视频时长:', raw, '→', seconds, '秒 (pattern:', pattern.toString().substring(0, 40), ')');
@@ -514,7 +514,7 @@
                     const dur = state.note.videoDuration || state.note.duration || (state.note.video && state.note.video.duration);
                     if (dur) {
                         const raw = parseFloat(dur);
-                        foundDuration = raw > 10000 ? Math.round(raw / 1000) : Math.round(raw);
+                        foundDuration = raw > 10000 ? Math.floor(raw / 1000) : Math.round(raw);
                         console.log('[小红书数据提取器] 从 __INITIAL_STATE__ 找到视频时长:', foundDuration, '秒');
                     }
                 }
@@ -541,7 +541,7 @@
                     const dataDuration = videoEl.getAttribute('data-duration') || videoEl.getAttribute('duration');
                     if (dataDuration) {
                         const raw = parseFloat(dataDuration);
-                        foundDuration = raw > 10000 ? Math.round(raw / 1000) : Math.round(raw);
+                        foundDuration = raw > 10000 ? Math.floor(raw / 1000) : Math.round(raw);
                         console.log('[小红书数据提取器] 从 video 属性获取:', foundDuration, '秒');
                     }
                 }
