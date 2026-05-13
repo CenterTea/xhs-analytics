@@ -24,10 +24,14 @@ interface CommentWordCloud {
     discussionContent: string
     interactionStatus: string
     conclusion: string
+    detailedAnalysis: string
+    recommendations: string[]
     stats: {
       questionCount: number
       experienceCount: number
       praiseCount: number
+      suggestionCount: number
+      agreementCount: number
     }
   }
 }
@@ -516,60 +520,140 @@ export default function PostAnalysisPage() {
     sentiment: 'positive' | 'neutral' | 'negative',
     effectiveRate: number
   ) => {
-    // 提取热门话题（前5个关键词）
+    const total = comments.length
+    if (total === 0) {
+      return {
+        hotTopics: '', windDirection: '暂无评论数据', sentimentText: '中性', isPositive: true,
+        discussionContent: '', interactionStatus: '', conclusion: '', detailedAnalysis: '', recommendations: [],
+        stats: { questionCount: 0, experienceCount: 0, praiseCount: 0, suggestionCount: 0, agreementCount: 0 }
+      }
+    }
+
+    // 提取热门话题
     const hotTopics = keywords.slice(0, 5).map(k => k.word).join('、')
 
-    // 统计评论类型
-    const questionCount = comments.filter(c => c.content.includes('?') || c.content.includes('？')).length
-    const experienceCount = comments.filter(c =>
-      /我也|一样|同感|确实|试过|用过|买过/.test(c.content)
-    ).length
-    const praiseCount = comments.filter(c =>
-      /好看|漂亮|美|棒|厉害|喜欢|爱|赞/.test(c.content)
-    ).length
+    // 多维度统计评论类型
+    const questionCount = comments.filter(c => c.content.includes('?') || c.content.includes('？') || /怎么|如何|什么|哪里|多少|能不能|可以吗/.test(c.content)).length
+    const experienceCount = comments.filter(c => /我也|一样|同感|确实|试过|用过|买过|去过|吃过|穿过|我也觉得|我也是/.test(c.content)).length
+    const praiseCount = comments.filter(c => /好看|漂亮|美|棒|厉害|喜欢|爱|赞|绝了|太.*了|好好看/.test(c.content)).length
+    const suggestionCount = comments.filter(c => /建议|推荐|可以试试|不妨|不如|要不|下次|应该|其实可以/.test(c.content)).length
+    const agreementCount = comments.filter(c => /没错|对的|同意|赞同|说得对|确实如此|正解|就是这个|有道理/.test(c.content)).length
 
-    // 判断评论区风向
+    // 计算各项占比
+    const questionRatio = questionCount / total
+    const experienceRatio = experienceCount / total
+    const praiseRatio = praiseCount / total
+    const suggestionRatio = suggestionCount / total
+    const agreementRatio = agreementCount / total
+
+    // 评论长度分析
+    const avgLength = comments.reduce((sum, c) => sum + c.content.length, 0) / total
+    const longComments = comments.filter(c => c.content.length > 50).length
+    const deepDiscussion = longComments / total > 0.3
+
+    // 判断评论区风向（更细致）
     let windDirection = ''
+    let discussionContent = ''
+    let interactionStatus = ''
+    let detailedAnalysis = ''
     let conclusion = ''
+    const recommendations: string[] = []
 
+    // 根据情感和评论类型组合判断
     if (sentiment === 'positive') {
-      if (praiseCount > comments.length * 0.3) {
+      if (praiseRatio > 0.3) {
         windDirection = '非常积极，充满赞美'
-        conclusion = '评论区氛围非常好，用户对内容高度认可。建议继续保持此类内容风格，多回复高赞评论增强粉丝粘性。'
-      } else if (experienceCount > comments.length * 0.2) {
-        windDirection = '积极且互动性强'
-        conclusion = '评论区用户参与度高，很多人在分享相关经验。这是一个很好的种草/干货类内容，用户信任度较高。'
+        detailedAnalysis = `评论区共有${total}条评论，其中赞美类评论占比最高（${Math.round(praiseRatio * 100)}%），平均每条评论${Math.round(avgLength)}字。`
+        if (deepDiscussion) {
+          detailedAnalysis += `有${Math.round(longComments / total * 100)}%的用户写了超过50字的深度评论，说明内容引发了强烈共鸣。`
+        }
+        conclusion = `用户对内容的认可度非常高，评论区充满正面反馈。${
+          deepDiscussion ? '而且许多用户愿意花时间写长评论，这种深度互动非常珍贵。' : ''
+        }建议继续保持此类内容风格，同时可以多回复高赞评论来增强粉丝粘性。`
+        recommendations.push('继续保持当前内容风格和创作方向')
+        recommendations.push('精选几条高质量评论进行回复或置顶，拉近与粉丝距离')
+        if (questionRatio > 0.05) recommendations.push('部分用户在评论区提问，及时回复可以进一步提升互动率')
+      } else if (experienceRatio > 0.2) {
+        windDirection = '积极且互动性强，用户参与度高'
+        detailedAnalysis = `评论区有${Math.round(experienceRatio * 100)}%的用户在分享个人经历或感受，${Math.round(suggestionRatio * 100)}%的用户给出了建议，说明内容具有很强的参与感和话题性。`
+        conclusion = '这是一个高度活跃的评论区，用户不只是简单点赞，而是在分享自己的故事和经验。这种UGC内容本身就很有价值，建议积极回复这些分享，让用户感受到被重视，形成良性互动循环。'
+        recommendations.push('回复用户的经验分享，表达感谢和共情')
+        recommendations.push('可以在后续内容中引用用户的真实经历，增强社区归属感')
+        recommendations.push('考虑围绕热门讨论话题策划后续内容')
+      } else if (suggestionRatio > 0.15) {
+        windDirection = '积极且富有建设性'
+        detailedAnalysis = `评论区中${Math.round(suggestionRatio * 100)}%的用户在主动提供建议，说明他们真心希望博主变得更好。这是一种高质量的粉丝关系。`
+        conclusion = '用户不只是消费内容，还在主动帮助博主成长。这种"共创"关系非常珍贵。建议认真对待每一条建议，让粉丝感受到他们的意见被重视。'
+        recommendations.push('对有价值的建议公开表示感谢，展示你的开放态度')
+        recommendations.push('将有代表性的建议整理成后续内容，回馈社区')
       } else {
-        windDirection = '整体积极'
-        conclusion = '评论区整体氛围良好，用户对内容持正面态度。可以适当引导更多深度讨论。'
+        windDirection = '整体积极，氛围友好'
+        detailedAnalysis = `评论区以正面互动为主，用户整体态度友好。平均评论长度${Math.round(avgLength)}字，${
+          effectiveRate > 60 ? '有效评论率较高，用户交流质量不错。' : '但有效讨论占比还可以提升。'
+        }`
+        conclusion = '评论区氛围良好，但深度互动还有提升空间。建议通过提问或发起话题来引导更深层次的讨论。'
+        recommendations.push('在内容结尾增加开放式提问，引导用户表达观点')
+        recommendations.push('可以尝试发起投票或选择类话题，降低参与门槛')
       }
     } else if (sentiment === 'negative') {
-      windDirection = '偏负面，需谨慎处理'
-      conclusion = '评论区存在较多负面声音，可能有争议点。建议查看具体负面评论内容，及时回应或调整内容策略。'
-    } else {
-      if (questionCount > comments.length * 0.15) {
-        windDirection = '中性偏咨询'
-        conclusion = '评论区以提问和咨询为主，说明内容引发了用户兴趣但信息不够完整。建议补充更多实用信息或回复常见问题。'
+      windDirection = '偏负面，需要关注和处理'
+      detailedAnalysis = `评论区中检测到较多负面情绪。${
+        questionRatio > 0.15 ? `同时有${Math.round(questionRatio * 100)}%的评论在提出质疑或疑问。` : ''
+      }${
+        suggestionRatio > 0.1 ? `也有${Math.round(suggestionRatio * 100)}%的用户在试图给出建设性意见。` : ''
+      }`
+      if (suggestionRatio > 0.1) {
+        conclusion = '虽然评论区有负面声音，但也有用户在真诚地提出改进建议。建议区分"恶意攻击"和"合理批评"，对合理的反馈表示感谢和改进，对恶意内容可以选择忽略或隐藏。'
+        recommendations.push('区分恶意攻击和合理批评，对后者表示感谢')
+        recommendations.push('如果确实存在问题，真诚道歉并及时改进反而能赢得信任')
+        recommendations.push('不要与负面评论争论，保持专业和冷静')
       } else {
-        windDirection = '中性平和'
-        conclusion = '评论区氛围平和，没有明显情绪倾向。可以通过提问引导等方式增加互动深度。'
+        conclusion = '评论区负面情绪较明显，建议先了解负面反馈的具体原因——是内容质量、观点争议还是其他因素，再有针对性地调整策略。'
+        recommendations.push('深入了解负面反馈的具体原因，针对性调整')
+        recommendations.push('必要时可以发一条评论统一回应大家的疑问')
+      }
+    } else {
+      // 中性
+      if (questionRatio > 0.25) {
+        windDirection = '以咨询和提问为主'
+        detailedAnalysis = `评论区${Math.round(questionRatio * 100)}%的内容是提问和咨询，说明内容成功激发了用户的好奇心，但信息可能不够完整。平均评论长度${Math.round(avgLength)}字。`
+        conclusion = '用户对你的内容很感兴趣，但觉得信息还不够。这是一个很好的信号——说明内容选题方向正确，只需要补充更多细节。建议整理高频问题，用后续内容或置顶评论统一解答。'
+        recommendations.push('整理评论区高频问题，发布一篇专门的答疑内容')
+        recommendations.push('在置顶评论中补充常见问题的答案')
+        recommendations.push('下次发类似内容时提前把关键信息写进去，减少重复提问')
+      } else if (experienceRatio > 0.15) {
+        windDirection = '中性偏分享，用户在交流经验'
+        detailedAnalysis = `评论区${Math.round(experienceRatio * 100)}%的内容是用户在分享自己的经历，${Math.round(agreementRatio * 100)}%的用户表示认同。这是一个健康的话题讨论氛围。`
+        conclusion = '评论区像一个小型社区，用户之间在互相交流和分享。这种氛围有助于培养粉丝忠诚度。建议多参与讨论，适当引导话题方向。'
+        recommendations.push('参与讨论，展示专业知识和个人见解')
+        recommendations.push('适时抛出延伸话题，保持讨论热度')
+        recommendations.push('关注用户的真实需求，作为选题灵感来源')
+      } else {
+        windDirection = '中性平和，互动较浅'
+        detailedAnalysis = `评论区整体氛围平和，没有明显的情绪倾向。${
+          effectiveRate > 50 ? '有效评论占比尚可，但讨论深度有待提升。' : '大部分互动停留在较浅层次。'
+        }平均评论长度${Math.round(avgLength)}字。`
+        conclusion = '用户对内容没有强烈的正面或负面反应，说明内容的"情绪钩子"不够。建议在内容中有意识地加入能引发讨论的元素。'
+        recommendations.push('在内容中主动抛出一个有争议性或讨论价值的问题')
+        recommendations.push('增加内容的"情绪价值"，让用户有表达的冲动')
+        recommendations.push('尝试分享个人观点或经历，引发共鸣和讨论')
       }
     }
 
     // 讨论内容总结
-    let discussionContent = ''
-    if (hotTopics) {
+    if (hotTopics && keywords.length >= 3) {
       discussionContent = `围绕"${hotTopics}"等话题展开讨论`
+    } else if (hotTopics) {
+      discussionContent = `主要讨论"${hotTopics}"`
     }
 
     // 有效互动情况
-    let interactionStatus = ''
     if (effectiveRate > 70) {
-      interactionStatus = '大部分用户都在认真交流'
+      interactionStatus = `大部分用户都在认真交流（有效评论率${effectiveRate}%）`
     } else if (effectiveRate > 40) {
-      interactionStatus = '有实质性讨论但也有简单互动'
+      interactionStatus = `有实质性讨论也有简单互动（有效评论率${effectiveRate}%）`
     } else {
-      interactionStatus = '简单互动占比较高'
+      interactionStatus = `简单互动占比较高（有效评论率${effectiveRate}%），可引导更深度的讨论`
     }
 
     return {
@@ -580,10 +664,14 @@ export default function PostAnalysisPage() {
       discussionContent,
       interactionStatus,
       conclusion,
+      detailedAnalysis,
+      recommendations,
       stats: {
         questionCount,
         experienceCount,
-        praiseCount
+        praiseCount,
+        suggestionCount,
+        agreementCount
       }
     }
   }
@@ -779,23 +867,83 @@ export default function PostAnalysisPage() {
                 </div>
 
                 {/* 讨论内容 */}
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-700">
-                    <span className="font-medium text-purple-800">讨论内容：</span>
-                    评论区主要在{result.comments.summary.discussionContent}，{result.comments.summary.interactionStatus}。
-                  </p>
+                <div className="space-y-3">
+                  <div className="bg-white rounded p-3 border border-purple-100">
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium text-purple-800">讨论主题：</span>
+                      {result.comments.summary.discussionContent
+                        ? `评论区主要在${result.comments.summary.discussionContent}`
+                        : '评论区暂无明显的集中话题'}
+                    </p>
+                    <p className="text-sm text-gray-700 mt-1">
+                      <span className="font-medium text-purple-800">互动质量：</span>
+                      {result.comments.summary.interactionStatus}
+                    </p>
+                  </div>
 
-                  <p className="text-sm text-gray-700">
-                    <span className="font-medium text-purple-800">互动特点：</span>
-                    {result.comments.summary.stats.questionCount > 0 && `${result.comments.summary.stats.questionCount}条提问、`}
-                    {result.comments.summary.stats.experienceCount > 0 && `${result.comments.summary.stats.experienceCount}条经验分享、`}
-                    {result.comments.summary.stats.praiseCount > 0 && `${result.comments.summary.stats.praiseCount}条赞美`}
-                    {result.comments.summary.stats.questionCount === 0 && result.comments.summary.stats.experienceCount === 0 && result.comments.summary.stats.praiseCount === 0 && '以普通互动为主'}
-                  </p>
+                  <div className="bg-white rounded p-3 border border-purple-100">
+                    <p className="text-sm font-medium text-purple-800 mb-1">📈 互动类型分布：</p>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      {result.comments.summary.stats.questionCount > 0 && (
+                        <div className="bg-blue-50 rounded p-2 text-center">
+                          <p className="font-bold text-blue-700">{result.comments.summary.stats.questionCount}</p>
+                          <p className="text-blue-600">提问</p>
+                        </div>
+                      )}
+                      {result.comments.summary.stats.experienceCount > 0 && (
+                        <div className="bg-green-50 rounded p-2 text-center">
+                          <p className="font-bold text-green-700">{result.comments.summary.stats.experienceCount}</p>
+                          <p className="text-green-600">经验分享</p>
+                        </div>
+                      )}
+                      {result.comments.summary.stats.praiseCount > 0 && (
+                        <div className="bg-pink-50 rounded p-2 text-center">
+                          <p className="font-bold text-pink-700">{result.comments.summary.stats.praiseCount}</p>
+                          <p className="text-pink-600">赞美</p>
+                        </div>
+                      )}
+                      {result.comments.summary.stats.suggestionCount > 0 && (
+                        <div className="bg-amber-50 rounded p-2 text-center">
+                          <p className="font-bold text-amber-700">{result.comments.summary.stats.suggestionCount}</p>
+                          <p className="text-amber-600">建议</p>
+                        </div>
+                      )}
+                      {result.comments.summary.stats.agreementCount > 0 && (
+                        <div className="bg-indigo-50 rounded p-2 text-center">
+                          <p className="font-bold text-indigo-700">{result.comments.summary.stats.agreementCount}</p>
+                          <p className="text-indigo-600">认同</p>
+                        </div>
+                      )}
+                      {result.comments.summary.stats.questionCount === 0 &&
+                       result.comments.summary.stats.experienceCount === 0 &&
+                       result.comments.summary.stats.praiseCount === 0 &&
+                       result.comments.summary.stats.suggestionCount === 0 &&
+                       result.comments.summary.stats.agreementCount === 0 && (
+                        <div className="col-span-3 bg-gray-50 rounded p-2 text-center">
+                          <p className="text-gray-500">以普通互动为主</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                  <div className="bg-white rounded p-3 border border-purple-200 mt-3">
-                    <p className="text-sm font-medium text-purple-900 mb-1">💡 结论与建议：</p>
-                    <p className="text-sm text-gray-700 leading-relaxed">{result.comments.summary.conclusion}</p>
+                  <div className="bg-white rounded p-3 border border-purple-100">
+                    <p className="text-sm font-medium text-purple-800 mb-1">🔍 详细分析：</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{result.comments.summary.detailedAnalysis}</p>
+                  </div>
+
+                  <div className="bg-white rounded p-3 border border-purple-200">
+                    <p className="text-sm font-medium text-purple-900 mb-2">💡 结论与建议：</p>
+                    <p className="text-sm text-gray-700 leading-relaxed mb-3">{result.comments.summary.conclusion}</p>
+                    {result.comments.summary.recommendations && result.comments.summary.recommendations.length > 0 && (
+                      <ul className="space-y-1">
+                        {result.comments.summary.recommendations.map((rec, idx) => (
+                          <li key={idx} className="text-sm text-purple-700 flex items-start gap-2">
+                            <span className="text-purple-400 mt-0.5">▸</span>
+                            {rec}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               </div>
