@@ -351,8 +351,11 @@ export default function PostAnalysisPage() {
     const comments = data.commentList || []
     const allCommentText = comments.map(c => c.content).join(' ')
 
-    // 关键词提取（简单的词频统计）
-    const keywords = extractKeywords(allCommentText)
+    // 收集所有评论者昵称，用于关键词过滤
+    const authorNames = new Set(comments.map(c => c.author).filter(a => a && a !== '未知用户'))
+
+    // 关键词提取（简单的词频统计），传入昵称以过滤
+    const keywords = extractKeywords(allCommentText, authorNames)
 
     // 情感分析
     const sentiment = analyzeSentiment(allCommentText)
@@ -389,28 +392,37 @@ export default function PostAnalysisPage() {
     })
   }
 
-  const extractKeywords = (text: string): { word: string; count: number }[] => {
+  const extractKeywords = (text: string, authorNames?: Set<string>): { word: string; count: number }[] => {
     if (!text || text.length < 10) return []
 
-    // 停用词列表 - 扩展更多常见无意义词汇
+    // 停用词列表
     const stopWords = new Set([
       '的', '了', '是', '我', '有', '和', '就', '不', '人', '都', '一', '上', '也', '很', '到', '说', '要', '去', '你', '会',
       '着', '没有', '看', '好', '自己', '这', '那', '在', '他', '她', '它', '们', '个', '来', '过', '下', '大', '小',
       '吗', '吧', '呢', '啊', '哦', '嗯', '哈', '哈哈', '哈哈哈', '嘿嘿', '嘻嘻', '呵呵', 'hhh', 'hhhh',
       '可以', '真的', '感觉', '觉得', '就是', '这个', '那个', '什么', '怎么', '为什么', '因为', '所以',
-      '但是', '然后', '还是', '不过', '其实', '可能', '应该', '好像', '一样', '一下', '一样',
-      'up', '楼主', '作者', '博主', '姐妹', '集美', '宝子', '宝宝', '姐妹',
+      '但是', '然后', '还是', '不过', '其实', '可能', '应该', '好像', '一样', '一下',
+      'up', '楼主', '作者', '博主', '姐妹', '集美', '宝子', '宝宝',
       '求', '求求', '跪求', '蹲', '蹲蹲', '同蹲', '跟', '跟跟', '带', '带带',
       '链接', '连接', 'lj', '价格', '多少', '钱', '元', '买', '卖', '链接在哪里',
-      '@', '//@', '回复', '引用', '转发', '赞', '赞了', '已赞', '收藏', '收藏了',
-      '好看', '不错', '喜欢', '爱了', '太棒', '厉害', '优秀', '好看', '漂亮', '美', '棒', '赞'
+      '回复', '引用', '转发', '赞', '赞了', '已赞', '收藏', '收藏了',
+      '好看', '不错', '喜欢', '爱了', '太棒', '厉害', '优秀', '漂亮', '美', '棒', '赞'
     ])
 
-    // 清理文本
+    // 将评论者昵称加入停用词，避免提取到用户名
+    if (authorNames) {
+      authorNames.forEach(name => {
+        if (name && name.length >= 2 && name.length <= 10) {
+          stopWords.add(name)
+        }
+      })
+    }
+
+    // 清理文本：去除 @用户名、链接、表情、数字、用户名
     const cleanedText = text
-      .replace(/[@@][^\s]+/g, ' ') // 移除@用户
+      .replace(/@\S+/g, ' ') // 移除 @username
       .replace(/https?:\/\/[^\s]+/g, ' ') // 移除链接
-      .replace(/[表情][^\s]*|[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ' ') // 移除表情符号
+      .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ' ') // 移除emoji
       .replace(/[0-9]+/g, ' ') // 移除纯数字
 
     // 提取2-6字的词组
