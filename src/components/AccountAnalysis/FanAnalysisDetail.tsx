@@ -96,7 +96,7 @@ export default function FanAnalysisDetail({ posts, stats }: FanAnalysisDetailPro
         <h3 className="text-sm font-semibold text-gray-800 mb-4">粉丝增长分析</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
           <div>
-            <p className="text-xs text-gray-400">净增粉丝</p>
+            <p className="text-xs text-gray-400">涨粉数量</p>
             <p className={`text-xl font-bold ${stats.netFollowerGrowth >= 0 ? 'text-green-600' : 'text-red-400'}`}>
               {stats.netFollowerGrowth >= 0 ? '+' : ''}{stats.netFollowerGrowth}
             </p>

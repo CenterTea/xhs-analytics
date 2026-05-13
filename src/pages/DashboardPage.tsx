@@ -123,7 +123,7 @@ export default function DashboardPage() {
             percentile={calculateTotalPercentile(accountStats.totalInteractions, n, benchmark.avgInteractionRate * 1500)}
           />
           <MetricCard
-            label="净增粉丝"
+            label="涨粉数量"
             value={accountStats.netFollowerGrowth}
             avgPerPost={avgFollowers.toLocaleString()}
             percentile={calculateTotalPercentile(accountStats.netFollowerGrowth, n, benchmark.avgFollowConversionRate * 100)}

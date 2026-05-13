@@ -35,11 +35,11 @@ export default function FanStickiness({ data }: { data: FanStickinessData }) {
           <p className="text-xs text-gray-400">粉丝互动 / 总互动</p>
         </div>
         <div>
-          <p className="text-xs text-gray-400 mb-1">净增粉丝</p>
+          <p className="text-xs text-gray-400 mb-1">涨粉数量</p>
           <p className={`text-2xl font-bold ${data.newVsLostFollowers.gained >= 0 ? 'text-green-600' : 'text-red-400'}`}>
             {data.newVsLostFollowers.gained >= 0 ? '+' : ''}{data.newVsLostFollowers.gained}
           </p>
-          <p className="text-xs text-gray-400">数据周期内净增</p>
+          <p className="text-xs text-gray-400">数据周期内涨粉</p>
         </div>
       </div>
       <p className="text-sm text-gray-600 mt-4">{data.assessment}</p>
