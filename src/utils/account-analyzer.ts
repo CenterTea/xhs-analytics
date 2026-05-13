@@ -83,13 +83,13 @@ function analyzeContentVerticality(posts: Post[]) {
   let assessment: string
   let suggestion: string
 
-  if (score >= 75) {
+  if (score >= 80) {
     assessment =
       '内容垂直度高——你的帖子话题集中在少数几个领域，定位清晰。这对推荐算法非常有利：系统明确知道该把你的内容推给谁，推荐精准度更高。\n\n' +
       '说人话：你就像一个专门做川菜的馆子——想吃辣的人自然就来了，而且来了还会再来，因为知道你是做这个的。'
     suggestion =
       '方向不用变。在垂直领域内拓展子话题（比如美妆领域可以做教程、避雷、好物分享等不同角度），既保持垂直度又避免内容重复。'
-  } else if (score >= 50) {
+  } else if (score >= 60) {
     assessment =
       '内容垂直度中等——有一定的聚焦方向，但部分帖子偏离了主要话题。这会导致推荐算法的分发不够精准：系统不确定你的核心受众是谁。\n\n' +
       '说人话：你大概有个方向，但有时候会"跑题"。就像一个餐厅今天卖火锅明天卖蛋糕，顾客也搞不懂你到底主打什么。'
@@ -111,29 +111,41 @@ function analyzeFanStickiness(_posts: Post[], stats: AccountStats) {
     ? Math.min(0.5, 0.3 + stats.avgInteractionRate * 2)
     : 0
 
-  const gained = stats.netFollowerGrowth
-  const lost = Math.round(gained * 0.3)
+  // 流失粉丝估算：小红书导出数据只有"净增粉丝"，没有单独的流失数
+  // 估算逻辑：假设流失率约 20%（新手账号典型值），净增 = 新增 - 流失
+  // 如果净增 > 0：新增 ≈ 净增 × 1.25，流失 = 新增 - 净增
+  // 如果净增 ≤ 0：直接取绝对值作为流失，新增 = 0
+  const netGrowth = stats.netFollowerGrowth
+  let gained: number
+  let lost: number
+  if (netGrowth > 0) {
+    gained = Math.round(netGrowth * 1.25)
+    lost = gained - netGrowth
+  } else {
+    gained = 0
+    lost = Math.abs(netGrowth)
+  }
 
   let score: number
   let assessment: string
   let suggestion: string
 
-  if (stats.fanGrowthTrend > 0.1) {
-    score = Math.min(100, Math.round(70 + stats.fanGrowthTrend * 100))
+  if (stats.fanGrowthTrend > 0.15) {
+    score = Math.min(100, Math.round(75 + stats.fanGrowthTrend * 80))
     assessment =
-      '粉丝增长趋势（Fan Growth Trend）呈上升态势——越来越多用户看完内容后选择关注你。说明内容方向正确，用户对你的持续关注意愿在增强。\n\n' +
+      '粉丝增长趋势呈上升态势——越来越多用户看完内容后选择关注你。说明内容方向正确，用户对你的持续关注意愿在增强。\n\n' +
       '说人话：粉丝涨势不错！像店铺的回头客越来越多——说明你的"货"确实好，大家愿意再来。'
     suggestion =
       '趁热打铁，保持发帖节奏和内容风格。可以在每篇结尾自然引导关注，进一步提升粉丝转化率。'
-  } else if (stats.fanGrowthTrend > -0.1) {
-    score = Math.round(50 + stats.fanGrowthTrend * 50)
+  } else if (stats.fanGrowthTrend > -0.05) {
+    score = Math.round(60 + stats.fanGrowthTrend * 200)
     assessment =
       '粉丝增长趋势平缓——涨粉速度不快但也没有明显下降，处于平台期。内容表现稳定但缺乏爆发性增长。\n\n' +
       '说人话：水龙头在慢慢滴水——有进账但不猛。需要一篇"爆款"来打破这个瓶颈。'
     suggestion =
       '尝试找个热门话题蹭一蹭（在你领域内），有时一篇爆款就能带动整个账号的数据跃升。'
   } else {
-    score = Math.max(0, Math.round(50 + stats.fanGrowthTrend * 100))
+    score = Math.max(0, Math.round(60 + stats.fanGrowthTrend * 150))
     assessment =
       '粉丝增长趋势下降——近期内容对新增粉丝的吸引力在减弱。可能是内容新鲜感下降，或者选题逐渐偏离了用户兴趣。\n\n' +
       '说人话：粉丝增长在减速甚至倒退。就像餐厅老菜单吃腻了，该推新菜了。回去看看你之前涨粉猛的那些帖子，找到"爆款配方"再复制。'
@@ -165,13 +177,13 @@ function analyzeMonetization(
   let readiness: string
   let suggestion: string
 
-  if (score >= 70) {
+  if (score >= 80) {
     suitableFor.push('品牌合作（接广）', '知识付费', '带货')
     readiness = '变现条件较好——内容垂直度、粉丝粘性、互动率综合表现不错，具备商业化基础'
     suggestion =
       '你的内容垂直度高、粉丝互动好——这是品牌方最看重的账号特质。可以主动联系相关品牌，或开通小红书带货功能。如果你在某个领域特别专业，知识付费也是好选择。\n\n' +
       '说人话：你的号状态不错，可以开始接一些商单了。但记住——刚开始别接太频繁，保持内容的真诚感，粉丝才会继续信任你。信任没了，什么都白搭。'
-  } else if (score >= 45) {
+  } else if (score >= 60) {
     suitableFor.push('品牌体验官', '中小量级带货')
     readiness = '变现基础已具备，但还需进一步积累内容资产和粉丝信任'
     suggestion =
@@ -195,15 +207,15 @@ function generateDirection(
 ): string {
   const topTopic = contentVerticality.mainTopics[0]?.topic ?? '你的内容'
 
-  if (contentVerticality.score >= 75 && fanStickiness.score >= 60) {
+  if (contentVerticality.score >= 80 && fanStickiness.score >= 60) {
     return `【账号状态】你的账号在「${topTopic}」领域定位清晰，粉丝粘性强。\n【建议】① 在现有领域内拓展子话题形成内容矩阵；② 尝试系列化内容（"第X期"），培养粉丝追更习惯；③ 可以开始评估商业化时机，接与定位匹配的品牌合作。\n\n说人话：你的号各方面都不错。下一步就是精细化运营+考虑变现了。`
   }
 
-  if (contentVerticality.score >= 75 && fanStickiness.score < 60) {
+  if (contentVerticality.score >= 80 && fanStickiness.score < 60) {
     return `【账号状态】内容方向清晰（${topTopic}），但粉丝粘性不足。\n【建议】① 增加个人 IP 元素——让粉丝关注的是"你"而不只是"内容"；② 在视频/图文中多出现你的脸、声音、态度；③ 做系列化内容让粉丝习惯"追你"。\n\n说人话：方向对了，但你这个人还不够"鲜活"。粉丝喜欢你的内容但还没喜欢上你。多露脸、多表达，让人记住你。`
   }
 
-  if (contentVerticality.score < 50) {
+  if (contentVerticality.score < 60) {
     return `【账号状态】内容定位尚不清晰，话题分散。\n【建议】先停下盲目发帖，复盘数据最好的几篇——它们围绕什么话题？选最擅长+最有受众的方向集中发力。什么都做=什么都做不好。\n\n说人话：你现在最需要做的不是发更多内容，而是想清楚你到底想做一个什么样的号。小红书特别喜欢专注的创作者。`
   }
 
