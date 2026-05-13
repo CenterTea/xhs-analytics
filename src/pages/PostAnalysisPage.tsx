@@ -418,12 +418,16 @@ export default function PostAnalysisPage() {
       })
     }
 
-    // 清理文本：去除 @用户名、链接、表情、数字、用户名
+    // 清理文本：去除 @用户名、链接、IP、表情、数字
     const cleanedText = text
       .replace(/@\S+/g, ' ') // 移除 @username
       .replace(/https?:\/\/[^\s]+/g, ' ') // 移除链接
+      .replace(/IP[属地：:]\s*\S+/g, ' ') // 移除 IP属地
       .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ' ') // 移除emoji
+      .replace(/\d{4}[\-\/年]\d{1,2}[\-\/月]\d{1,2}[\s\d:]*/g, ' ') // 移除时间戳
+      .replace(/\d+赞|\d+$/gm, ' ') // 移除点赞数和行尾数字
       .replace(/[0-9]+/g, ' ') // 移除纯数字
+      .replace(/^回复\s*$/gm, ' ') // 移除纯"回复"文本
 
     // 提取2-6字的词组
     const wordCount: Record<string, number> = {}
@@ -961,31 +965,62 @@ export default function PostAnalysisPage() {
               </div>
             )}
 
-            {/* 显示评论 */}
+            {/* 热门评论 - 原生评论区样式 */}
             {extractedData?.commentList && extractedData.commentList.length > 0 && (
-              <div className="mt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium text-gray-700">
-                    热门评论 ({extractedData.commentList.length}条)
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                  <h4 className="text-sm font-semibold text-gray-800">
+                    热门评论 <span className="text-gray-400 font-normal">({extractedData.commentList.length}条)</span>
                   </h4>
                   <span className="text-xs text-gray-400">
-                    按点赞数排序，显示前{Math.min(10, extractedData.commentList.length)}条
+                    按 👍 排序，显示前{Math.min(20, extractedData.commentList.length)}条
                   </span>
                 </div>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {extractedData.commentList.slice(0, 10).map((comment, idx) => (
-                    <div key={idx} className="bg-gray-50 rounded p-2 text-sm">
-                      <span className="font-medium text-gray-700">{comment.author}:</span>
-                      <span className="text-gray-600 ml-1">{comment.content}</span>
-                      {comment.likes > 0 && (
-                        <span className="text-xs text-gray-400 ml-2">👍 {comment.likes}</span>
-                      )}
-                    </div>
-                  ))}
+                <div className="space-y-0 max-h-[500px] overflow-y-auto divide-y divide-gray-50">
+                  {extractedData.commentList.slice(0, 20).map((comment, idx) => {
+                    // 生成头像背景色
+                    const colors = ['bg-rose-100 text-rose-600', 'bg-amber-100 text-amber-600', 'bg-emerald-100 text-emerald-600', 'bg-sky-100 text-sky-600', 'bg-violet-100 text-violet-600', 'bg-pink-100 text-pink-600']
+                    const avatarColor = colors[idx % colors.length]
+                    const initial = (comment.author || '?')[0]
+
+                    return (
+                      <div key={idx} className="py-3 first:pt-0">
+                        <div className="flex gap-3">
+                          {/* 头像 */}
+                          <div className={`w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center text-xs font-bold shrink-0`}>
+                            {initial}
+                          </div>
+                          {/* 内容 */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-medium text-gray-800">{comment.author}</span>
+                              {idx === 0 && (
+                                <span className="text-[10px] bg-red-100 text-red-500 px-1.5 py-0.5 rounded">热评</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-700 leading-relaxed break-words">
+                              {comment.content}
+                            </p>
+                            <div className="flex items-center gap-3 mt-2">
+                              {comment.likes > 0 && (
+                                <span className="text-xs text-gray-400 flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" />
+                                  </svg>
+                                  {comment.likes}
+                                </span>
+                              )}
+                              <span className="text-xs text-gray-300">#{idx + 1}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-                {extractedData.commentList.length > 10 && (
-                  <p className="text-xs text-center text-gray-400 mt-2">
-                    还有 {extractedData.commentList.length - 10} 条评论未显示
+                {extractedData.commentList.length > 20 && (
+                  <p className="text-xs text-center text-gray-400 mt-4 pt-3 border-t border-gray-100">
+                    还有 {extractedData.commentList.length - 20} 条评论未显示
                   </p>
                 )}
               </div>
