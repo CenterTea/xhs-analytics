@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小红书帖子数据提取器
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  提取小红书帖子数据并发送到数据分析工具
 // @author       You
 // @match        https://www.xiaohongshu.com/*
@@ -456,48 +456,100 @@
     }
 
     function extractVideoInfo() {
-        // 从页面脚本中提取视频信息
+        console.log('[小红书数据提取器] 开始提取视频信息...');
+
+        // 方法1：从页面所有 script 标签中提取
         const scripts = document.querySelectorAll('script');
+        let foundType = 'image';
+        let foundDuration = 0;
+
         for (const script of scripts) {
             const text = script.textContent;
+            if (!text || text.length < 100) continue;
 
-            // 检测帖子类型
-            const typeMatch = text.match(/"type"\s*:\s*"(video|normal)"/);
-            const postType = typeMatch ? (typeMatch[1] === 'video' ? 'video' : 'image') : 'image';
+            // 检测帖子类型（只取第一次发现的）
+            if (foundType === 'image') {
+                const typeMatch = text.match(/"type"\s*:\s*"(video|normal)"/);
+                if (typeMatch) {
+                    foundType = typeMatch[1] === 'video' ? 'video' : 'image';
+                    console.log('[小红书数据提取器] 检测到帖子类型:', foundType);
+                }
+            }
 
-            if (postType === 'video') {
-                // 尝试提取视频时长（秒）
-                const durationPatterns = [
-                    /"videoDuration"\s*:\s*(\d+)/,           // 毫秒
-                    /"duration"\s*:\s*(\d+)/,                // 可能是毫秒
-                    /"video"\s*:\s*\{[^}]*"duration"\s*:\s*(\d+)/,
-                    /"videoInfo"\s*:\s*\{[^}]*"duration"\s*:\s*(\d+)/
-                ];
+            // 尝试提取视频时长 - 多种可能的字段名和格式
+            const durationPatterns = [
+                /"videoDuration"\s*:\s*(\d+(?:\.\d+)?)/,
+                /"duration"\s*:\s*(\d+(?:\.\d+)?)/,
+                /"video"\s*:\s*\{[^}]*?"duration"\s*:\s*(\d+(?:\.\d+)?)/,
+                /"videoInfo"\s*:\s*\{[^}]*?"duration"\s*:\s*(\d+(?:\.\d+)?)/,
+                /"media"\s*:\s*\{[^}]*?"duration"\s*:\s*(\d+(?:\.\d+)?)/,
+                /"length"\s*:\s*(\d+(?:\.\d+)?)/,
+            ];
 
-                for (const pattern of durationPatterns) {
-                    const match = text.match(pattern);
-                    if (match) {
-                        const raw = parseInt(match[1]);
-                        // 如果数值很大（>10000），可能是毫秒，转换为秒
-                        const duration = raw > 10000 ? Math.round(raw / 1000) : raw;
-                        if (duration > 0 && duration < 36000) { // 合理范围：1秒~10小时
-                            return { type: 'video', duration: duration };
+            for (const pattern of durationPatterns) {
+                const match = text.match(pattern);
+                if (match) {
+                    const raw = parseFloat(match[1]);
+                    if (raw > 0 && raw < 100000000) {
+                        // 判断单位：>10000 大概率是毫秒
+                        const seconds = raw > 10000 ? Math.round(raw / 1000) : Math.round(raw);
+                        if (seconds > 0 && seconds < 36000) {
+                            foundDuration = seconds;
+                            console.log('[小红书数据提取器] 找到视频时长:', raw, '→', seconds, '秒 (pattern:', pattern.toString().substring(0, 40), ')');
+                            break;
                         }
                     }
                 }
             }
 
-            return { type: postType, duration: 0 };
+            if (foundDuration > 0) break;
         }
 
-        // 备选：从页面上的 video 元素提取
-        const videoEl = document.querySelector('video');
-        if (videoEl && videoEl.duration && isFinite(videoEl.duration)) {
-            return { type: 'video', duration: Math.round(videoEl.duration) };
+        // 方法2：从 window.__INITIAL_STATE__ 提取
+        if (foundDuration === 0 && window.__INITIAL_STATE__) {
+            try {
+                const state = window.__INITIAL_STATE__;
+                if (state.note && state.note.type === 'video') {
+                    foundType = 'video';
+                    const dur = state.note.videoDuration || state.note.duration || (state.note.video && state.note.video.duration);
+                    if (dur) {
+                        const raw = parseFloat(dur);
+                        foundDuration = raw > 10000 ? Math.round(raw / 1000) : Math.round(raw);
+                        console.log('[小红书数据提取器] 从 __INITIAL_STATE__ 找到视频时长:', foundDuration, '秒');
+                    }
+                }
+            } catch (e) {
+                console.log('[小红书数据提取器] __INITIAL_STATE__ 提取失败:', e);
+            }
         }
 
-        // 默认：图文
-        return { type: 'image', duration: 0 };
+        // 方法3：从页面 video 元素提取
+        if (foundDuration === 0) {
+            const videoEl = document.querySelector('video');
+            if (videoEl) {
+                foundType = 'video';
+                console.log('[小红书数据提取器] 找到 video 元素');
+
+                // 尝试获取 duration 属性
+                if (videoEl.duration && isFinite(videoEl.duration) && videoEl.duration > 0) {
+                    foundDuration = Math.round(videoEl.duration);
+                    console.log('[小红书数据提取器] 从 video.duration 获取:', foundDuration, '秒');
+                }
+
+                // 尝试从 video 的 src 或 data 属性获取
+                if (foundDuration === 0) {
+                    const dataDuration = videoEl.getAttribute('data-duration') || videoEl.getAttribute('duration');
+                    if (dataDuration) {
+                        const raw = parseFloat(dataDuration);
+                        foundDuration = raw > 10000 ? Math.round(raw / 1000) : Math.round(raw);
+                        console.log('[小红书数据提取器] 从 video 属性获取:', foundDuration, '秒');
+                    }
+                }
+            }
+        }
+
+        console.log('[小红书数据提取器] 最终结果: type=' + foundType + ', duration=' + foundDuration + '秒');
+        return { type: foundType, duration: foundDuration };
     }
 
     async function extractComments() {
