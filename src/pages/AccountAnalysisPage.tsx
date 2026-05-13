@@ -5,10 +5,14 @@ import FanStickiness from '../components/AccountAnalysis/FanStickiness'
 import FanAnalysisDetail from '../components/AccountAnalysis/FanAnalysisDetail'
 import MonetizationMatrix from '../components/AccountAnalysis/MonetizationMatrix'
 import DirectionAdvice from '../components/AccountAnalysis/DirectionAdvice'
+import AIContentAnalysis from '../components/AccountAnalysis/AIContentAnalysis'
 
 export default function AccountAnalysisPage() {
   const { accountAnalysis, accountStats, posts } = useData()
   const navigate = useNavigate()
+
+  // 收集所有帖子标题用于 AI 分析
+  const allTitles = posts.map(p => p.title).filter(Boolean)
 
   if (!posts.length || !accountStats) {
     return (
@@ -31,6 +35,10 @@ export default function AccountAnalysisPage() {
       {accountAnalysis ? (
         <div className="space-y-8">
           <VerticalityGauge data={accountAnalysis.contentVerticality} />
+          <AIContentAnalysis
+            titles={allTitles}
+            currentVerticality={accountAnalysis.contentVerticality}
+          />
           <FanStickiness data={accountAnalysis.fanStickiness} />
           {/* 粉丝深度分析 */}
           <FanAnalysisDetail
