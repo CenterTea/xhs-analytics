@@ -113,6 +113,21 @@
     }).observe(document, { subtree: true, childList: true });
 
     async function extractData() {
+        // 存储全局状态，用于反爬虫时返回已有数据
+        window.xhsExtractionState = {
+            title: '',
+            author: '',
+            content: '',
+            likes: 0,
+            collects: 0,
+            comments: 0,
+            shares: 0,
+            postTime: '',
+            commentList: [],
+            antiScrapingDetected: false,
+            detectionReason: ''
+        };
+
         try {
             // 验证当前页面
             if (!window.location.href.includes('/explore/')) {
@@ -125,18 +140,30 @@
             console.log('[小红书数据提取器] ==============================');
             console.log('[小红书数据提取器] 开始提取，当前URL:', window.location.href);
 
-            // 提取帖子基础数据
+            // 提取帖子基础数据（先保存基础数据）
             const title = extractTitle();
+            window.xhsExtractionState.title = title;
             console.log('[小红书数据提取器] 提取的标题:', title);
 
             const author = extractAuthor();
+            window.xhsExtractionState.author = author;
             console.log('[小红书数据提取器] 提取的作者:', author);
 
             const likes = extractCount('点赞');
             const collects = extractCount('收藏');
             const comments = extractCount('评论');
             const shares = extractCount('分享');
+            window.xhsExtractionState.likes = likes;
+            window.xhsExtractionState.collects = collects;
+            window.xhsExtractionState.comments = comments;
+            window.xhsExtractionState.shares = shares;
             console.log('[小红书数据提取器] 互动数据:', { likes, collects, comments, shares });
+
+            const content = extractContent();
+            window.xhsExtractionState.content = content;
+
+            const postTime = extractPostTime();
+            window.xhsExtractionState.postTime = postTime;
 
             // 检查数据合理性
             if (title === '未提取到标题' || title.length < 3) {
@@ -145,21 +172,28 @@
 
             showToast('📊 正在展开楼中楼评论...');
 
-            // 提取评论
+            // 提取评论（可能因反爬虫而提前返回）
             const commentList = await extractComments();
+            window.xhsExtractionState.commentList = commentList;
+
+            // 检查是否检测到反爬虫
+            const wasAntiScrapingDetected = window.xhsExtractionState.antiScrapingDetected;
+            const detectionReason = window.xhsExtractionState.detectionReason;
 
             const data = {
                 title: title,
-                content: extractContent(),
+                content: content,
                 author: author,
                 likes: likes,
                 collects: collects,
                 comments: comments,
                 shares: shares,
-                postTime: extractPostTime(),
+                postTime: postTime,
                 url: window.location.href,
                 extractTime: new Date().toISOString(),
-                commentList: commentList
+                commentList: commentList,
+                antiScrapingTriggered: wasAntiScrapingDetected,
+                antiScrapingReason: detectionReason
             };
 
             console.log('[小红书数据提取器] 提取完成:');
@@ -167,13 +201,20 @@
             console.log('  - 作者:', author);
             console.log('  - 点赞:', likes);
             console.log('  - 评论:', comments, '(提取到', commentList.length, '条)');
+            if (wasAntiScrapingDetected) {
+                console.log('  - ⚠️ 触发反爬虫:', detectionReason);
+            }
             console.log('[小红书数据提取器] ==============================');
 
             // 复制到剪贴板
             const jsonStr = JSON.stringify(data, null, 2);
             GM_setClipboard(jsonStr);
 
-            showToast(`✅ 已提取 ${commentList.length} 条评论！正在打开分析工具...`);
+            if (wasAntiScrapingDetected) {
+                showToast(`⚠️ 触发反爬虫机制，已提取 ${commentList.length} 条评论，正在发送...`, true);
+            } else {
+                showToast(`✅ 已提取 ${commentList.length} 条评论！正在打开分析工具...`);
+            }
 
             // 打开分析工具
             const encodedData = encodeURIComponent(jsonStr);
@@ -181,11 +222,43 @@
 
             setTimeout(() => {
                 GM_openInTab(analysisUrl, { active: true });
-            }, 1000);
+            }, wasAntiScrapingDetected ? 2000 : 1000);
 
         } catch (error) {
-            showToast('❌ 提取失败：' + error.message, true);
-            console.error('[小红书数据提取器] 提取错误:', error);
+            // 如果已经提取了部分数据，尝试发送
+            if (window.xhsExtractionState && window.xhsExtractionState.title) {
+                console.log('[小红书数据提取器] 发生错误，尝试发送已收集的数据...');
+                const partialData = {
+                    title: window.xhsExtractionState.title,
+                    content: window.xhsExtractionState.content,
+                    author: window.xhsExtractionState.author,
+                    likes: window.xhsExtractionState.likes,
+                    collects: window.xhsExtractionState.collects,
+                    comments: window.xhsExtractionState.comments,
+                    shares: window.xhsExtractionState.shares,
+                    postTime: window.xhsExtractionState.postTime,
+                    url: window.location.href,
+                    extractTime: new Date().toISOString(),
+                    commentList: window.xhsExtractionState.commentList || [],
+                    extractionError: error.message,
+                    antiScrapingTriggered: window.xhsExtractionState.antiScrapingDetected
+                };
+
+                const jsonStr = JSON.stringify(partialData, null, 2);
+                GM_setClipboard(jsonStr);
+
+                showToast(`⚠️ 提取中断，已发送已收集的 ${partialData.commentList.length} 条评论`, true);
+
+                const encodedData = encodeURIComponent(jsonStr);
+                const analysisUrl = `https://centertea.github.io/xhs-analytics/#/post-analysis?data=${encodedData}`;
+
+                setTimeout(() => {
+                    GM_openInTab(analysisUrl, { active: true });
+                }, 1500);
+            } else {
+                showToast('❌ 提取失败：' + error.message, true);
+                console.error('[小红书数据提取器] 提取错误:', error);
+            }
         }
     }
 
@@ -448,9 +521,126 @@
         return '';
     }
 
+    // 反爬虫检测函数
+    function detectAntiScraping() {
+        // 检测1：验证码弹窗
+        const captchaSelectors = [
+            '[class*="captcha"]',
+            '[class*="verify"]',
+            '[class*="verification"]',
+            '[class*="security"]',
+            'div:contains("验证")',
+            'div:contains("安全")',
+            'div:contains("请点击")',
+            'div[class*="modal"], div[class*="popup"]'
+        ];
+
+        for (const selector of captchaSelectors) {
+            const el = document.querySelector(selector);
+            if (el && el.offsetParent !== null) {
+                const text = el.textContent;
+                if (/验证|安全|请点击|拖动滑块|图形验证|人机验证/i.test(text)) {
+                    return { detected: true, reason: '检测到验证码/安全验证', element: el };
+                }
+            }
+        }
+
+        // 检测2：操作频繁提示
+        const bodyText = document.body?.textContent || '';
+        if (/操作频繁|请稍后再试|访问受限|请求过多|Too Many Requests|rate limit/i.test(bodyText)) {
+            return { detected: true, reason: '检测到操作频繁提示' };
+        }
+
+        // 检测3：登录弹窗（要求重新登录）
+        const loginSelectors = [
+            '[class*="login"]',
+            '[class*="auth"]'
+        ];
+        for (const selector of loginSelectors) {
+            const el = document.querySelector(selector);
+            if (el && el.offsetParent !== null) {
+                const text = el.textContent;
+                if (/登录|扫码|手机号/i.test(text) && el.offsetHeight > 200) {
+                    return { detected: true, reason: '检测到登录弹窗', element: el };
+                }
+            }
+        }
+
+        // 检测4：评论区域消失或显示错误
+        const errorSelectors = [
+            '[class*="error"]',
+            '[class*="empty"]',
+            '[class*="fail"]'
+        ];
+        for (const selector of errorSelectors) {
+            const el = document.querySelector(selector);
+            if (el && el.offsetParent !== null) {
+                const text = el.textContent;
+                if (/加载失败|网络错误|请重试|empty|error/i.test(text)) {
+                    return { detected: true, reason: '检测到加载错误', element: el };
+                }
+            }
+        }
+
+        // 检测5：页面被重定向到非帖子页面
+        if (!window.location.href.includes('/explore/')) {
+            return { detected: true, reason: '页面已离开帖子详情页' };
+        }
+
+        return { detected: false };
+    }
+
+    // 显示反爬虫检测提示
+    function showAntiScrapingWarning(reason) {
+        const existing = document.getElementById('xhs-anti-scraping-warning');
+        if (existing) existing.remove();
+
+        const warning = document.createElement('div');
+        warning.id = 'xhs-anti-scraping-warning';
+        warning.innerHTML = `
+            <div style="font-size: 18px; margin-bottom: 8px;">⚠️ 触发反爬虫机制</div>
+            <div style="font-size: 14px; opacity: 0.9;">${reason}</div>
+            <div style="font-size: 12px; margin-top: 12px; opacity: 0.8;">
+                已收集的数据将立即发送到分析平台...
+            </div>
+        `;
+        warning.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 30px 40px;
+            border-radius: 16px;
+            z-index: 999999999;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 8px 32px rgba(238, 90, 36, 0.4);
+            max-width: 90%;
+            text-align: center;
+            line-height: 1.5;
+            animation: shake 0.5s ease-in-out;
+        `;
+
+        // 添加抖动动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translate(-50%, -50%) translateX(0); }
+                25% { transform: translate(-50%, -50%) translateX(-10px); }
+                75% { transform: translate(-50%, -50%) translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+        document.body.appendChild(warning);
+    }
+
     async function extractComments() {
         const comments = [];
         const seenContents = new Set();
+        let antiScrapingDetected = false;
+        let detectionReason = '';
 
         // 查找评论区容器（尝试多种可能的选择器）
         let commentContainer = document.querySelector('#comment-container, [class*="comment-list"], [class*="comments-list"], [class*="comment-section"]');
@@ -461,12 +651,31 @@
 
         console.log('[小红书数据提取器] 评论区容器:', commentContainer ? '找到' : '未找到，使用页面滚动');
 
+        // 首先检查是否已触发反爬虫
+        let checkResult = detectAntiScraping();
+        if (checkResult.detected) {
+            console.log('[小红书数据提取器] ⚠️ 初始检测:', checkResult.reason);
+            showAntiScrapingWarning(checkResult.reason);
+            showToast('⚠️ ' + checkResult.reason + '，将使用已收集数据', true);
+            return comments;
+        }
+
         // 展开所有楼中楼回复（先点击所有展开按钮）
         console.log('[小红书数据提取器] 开始展开楼中楼评论...');
         let expandCount = 0;
 
         // 多次尝试点击展开按钮（最多50轮，确保展开所有回复）
         for (let round = 0; round < 50; round++) {
+            // 每轮开始前检查反爬虫
+            checkResult = detectAntiScraping();
+            if (checkResult.detected) {
+                antiScrapingDetected = true;
+                detectionReason = checkResult.reason;
+                console.log(`[小红书数据提取器] ⚠️ 第${round + 1}轮检测到反爬虫:`, checkResult.reason);
+                showAntiScrapingWarning(checkResult.reason);
+                break;
+            }
+
             let foundInRound = 0;
 
             // 查找所有可能的展开按钮
@@ -491,8 +700,21 @@
                     expandCount++;
                     foundInRound++;
                     await sleep(300, 600);
+
+                    // 点击后检查反爬虫（可能被触发）
+                    checkResult = detectAntiScraping();
+                    if (checkResult.detected) {
+                        antiScrapingDetected = true;
+                        detectionReason = checkResult.reason;
+                        console.log('[小红书数据提取器] ⚠️ 点击后检测到反爬虫:', checkResult.reason);
+                        showAntiScrapingWarning(checkResult.reason);
+                        break;
+                    }
                 }
             }
+
+            // 如果检测到反爬虫，退出循环
+            if (antiScrapingDetected) break;
 
             console.log(`[小红书数据提取器] 第${round + 1}轮展开: ${foundInRound}个`);
 
@@ -511,30 +733,85 @@
 
         console.log('[小红书数据提取器] 总共展开了', expandCount, '个楼中楼');
 
+        // 如果已经触发反爬虫，直接返回已收集的数据（此时可能还没有数据，继续尝试提取页面上的）
+        if (antiScrapingDetected) {
+            console.log('[小红书数据提取器] 因检测到反爬虫，跳过后续滚动加载');
+        }
+
         // 等待所有展开的内容加载完成
         await sleep(1500, 2500);
 
-        // 滚动加载更多评论（最多滚动15次）
-        console.log('[小红书数据提取器] 开始滚动加载评论...');
-        for (let i = 0; i < 15; i++) {
-            if (isContainerScroll && commentContainer) {
-                // 滚动评论区容器
-                commentContainer.scrollTop = commentContainer.scrollHeight;
-            } else {
-                // 滚动页面
-                window.scrollTo(0, document.body.scrollHeight);
-            }
-            await sleep(1000, 2000);
+        // 滚动加载更多评论（最多滚动15次）- 仅当未触发反爬虫时
+        if (!antiScrapingDetected) {
+            console.log('[小红书数据提取器] 开始滚动加载评论...');
+            let noNewCommentsCount = 0;
+            let previousCommentCount = 0;
 
-            // 尝试点击"加载更多"按钮
-            const loadMoreBtns = document.querySelectorAll('button, div, span');
-            for (const btn of loadMoreBtns) {
-                const text = btn.textContent.trim();
-                if (text === '加载更多' || text === '查看更多评论' || text === '展开更多') {
-                    if (btn.offsetParent !== null) {
-                        btn.click();
-                        await sleep(400, 800);
+            for (let i = 0; i < 15; i++) {
+                // 每次滚动前检查反爬虫
+                checkResult = detectAntiScraping();
+                if (checkResult.detected) {
+                    antiScrapingDetected = true;
+                    detectionReason = checkResult.reason;
+                    console.log(`[小红书数据提取器] ⚠️ 第${i + 1}次滚动检测到反爬虫:`, checkResult.reason);
+                    showAntiScrapingWarning(checkResult.reason);
+                    break;
+                }
+
+                if (isContainerScroll && commentContainer) {
+                    // 滚动评论区容器
+                    commentContainer.scrollTop = commentContainer.scrollHeight;
+                } else {
+                    // 滚动页面
+                    window.scrollTo(0, document.body.scrollHeight);
+                }
+                await sleep(1000, 2000);
+
+                // 滚动后再次检查反爬虫
+                checkResult = detectAntiScraping();
+                if (checkResult.detected) {
+                    antiScrapingDetected = true;
+                    detectionReason = checkResult.reason;
+                    console.log('[小红书数据提取器] ⚠️ 滚动后检测到反爬虫:', checkResult.reason);
+                    showAntiScrapingWarning(checkResult.reason);
+                    break;
+                }
+
+                // 尝试点击"加载更多"按钮
+                const loadMoreBtns = document.querySelectorAll('button, div, span');
+                for (const btn of loadMoreBtns) {
+                    const text = btn.textContent.trim();
+                    if (text === '加载更多' || text === '查看更多评论' || text === '展开更多') {
+                        if (btn.offsetParent !== null) {
+                            btn.click();
+                            await sleep(400, 800);
+
+                            // 点击后检查反爬虫
+                            checkResult = detectAntiScraping();
+                            if (checkResult.detected) {
+                                antiScrapingDetected = true;
+                                detectionReason = checkResult.reason;
+                                console.log('[小红书数据提取器] ⚠️ 点击加载更多后检测到反爬虫:', checkResult.reason);
+                                showAntiScrapingWarning(checkResult.reason);
+                                break;
+                            }
+                        }
                     }
+                }
+
+                if (antiScrapingDetected) break;
+
+                // 检测评论是否还在增加（防止空转）
+                const currentCommentElements = document.querySelectorAll('[class*="comment-item"], [class*="CommentItem"], div[class*="comment-"] > div');
+                if (currentCommentElements.length <= previousCommentCount) {
+                    noNewCommentsCount++;
+                    if (noNewCommentsCount >= 3) {
+                        console.log('[小红书数据提取器] 连续3次滚动没有新评论，停止滚动');
+                        break;
+                    }
+                } else {
+                    noNewCommentsCount = 0;
+                    previousCommentCount = currentCommentElements.length;
                 }
             }
         }
@@ -869,6 +1146,13 @@
         });
 
         console.log('[小红书数据提取器] 共提取有效评论:', comments.length);
+
+        // 如果检测到反爬虫，更新全局状态
+        if (antiScrapingDetected && window.xhsExtractionState) {
+            window.xhsExtractionState.antiScrapingDetected = true;
+            window.xhsExtractionState.detectionReason = detectionReason;
+            console.log('[小红书数据提取器] 已记录反爬虫状态:', detectionReason);
+        }
 
         // 按点赞数排序
         return comments.sort((a, b) => b.likes - a.likes).slice(0, 500);

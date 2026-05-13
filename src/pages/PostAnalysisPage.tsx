@@ -16,6 +16,20 @@ interface CommentWordCloud {
   topWords: { word: string; count: number }[]
   sentiment: 'positive' | 'neutral' | 'negative'
   mainTopic: string
+  summary: {
+    hotTopics: string
+    windDirection: string
+    sentimentText: string
+    isPositive: boolean
+    discussionContent: string
+    interactionStatus: string
+    conclusion: string
+    stats: {
+      questionCount: number
+      experienceCount: number
+      praiseCount: number
+    }
+  }
 }
 
 interface ExtractedData {
@@ -345,6 +359,9 @@ export default function PostAnalysisPage() {
     ).length
     const effectiveRate = comments.length > 0 ? Math.round((effectiveComments / comments.length) * 100) : 0
 
+    // 生成评论区总结
+    const commentSummary = generateCommentSummary(keywords, comments, sentiment, effectiveRate)
+
     setResult({
       content: {
         estimatedReadTime,
@@ -355,7 +372,8 @@ export default function PostAnalysisPage() {
       comments: {
         topWords: keywords.slice(0, 10),
         sentiment,
-        mainTopic: analyzeMainTopic(keywords, comments)
+        mainTopic: analyzeMainTopic(keywords, comments),
+        summary: commentSummary
       },
       commentQuality: {
         effectiveRate,
@@ -489,6 +507,85 @@ export default function PostAnalysisPage() {
     }
   }
 
+  // 生成评论区总结
+  const generateCommentSummary = (
+    keywords: { word: string; count: number }[],
+    comments: any[],
+    sentiment: 'positive' | 'neutral' | 'negative',
+    effectiveRate: number
+  ) => {
+    // 提取热门话题（前5个关键词）
+    const hotTopics = keywords.slice(0, 5).map(k => k.word).join('、')
+
+    // 统计评论类型
+    const questionCount = comments.filter(c => c.content.includes('?') || c.content.includes('？')).length
+    const experienceCount = comments.filter(c =>
+      /我也|一样|同感|确实|试过|用过|买过/.test(c.content)
+    ).length
+    const praiseCount = comments.filter(c =>
+      /好看|漂亮|美|棒|厉害|喜欢|爱|赞/.test(c.content)
+    ).length
+
+    // 判断评论区风向
+    let windDirection = ''
+    let conclusion = ''
+
+    if (sentiment === 'positive') {
+      if (praiseCount > comments.length * 0.3) {
+        windDirection = '非常积极，充满赞美'
+        conclusion = '评论区氛围非常好，用户对内容高度认可。建议继续保持此类内容风格，多回复高赞评论增强粉丝粘性。'
+      } else if (experienceCount > comments.length * 0.2) {
+        windDirection = '积极且互动性强'
+        conclusion = '评论区用户参与度高，很多人在分享相关经验。这是一个很好的种草/干货类内容，用户信任度较高。'
+      } else {
+        windDirection = '整体积极'
+        conclusion = '评论区整体氛围良好，用户对内容持正面态度。可以适当引导更多深度讨论。'
+      }
+    } else if (sentiment === 'negative') {
+      windDirection = '偏负面，需谨慎处理'
+      conclusion = '评论区存在较多负面声音，可能有争议点。建议查看具体负面评论内容，及时回应或调整内容策略。'
+    } else {
+      if (questionCount > comments.length * 0.15) {
+        windDirection = '中性偏咨询'
+        conclusion = '评论区以提问和咨询为主，说明内容引发了用户兴趣但信息不够完整。建议补充更多实用信息或回复常见问题。'
+      } else {
+        windDirection = '中性平和'
+        conclusion = '评论区氛围平和，没有明显情绪倾向。可以通过提问引导等方式增加互动深度。'
+      }
+    }
+
+    // 讨论内容总结
+    let discussionContent = ''
+    if (hotTopics) {
+      discussionContent = `围绕"${hotTopics}"等话题展开讨论`
+    }
+
+    // 有效互动情况
+    let interactionStatus = ''
+    if (effectiveRate > 70) {
+      interactionStatus = '大部分用户都在认真交流'
+    } else if (effectiveRate > 40) {
+      interactionStatus = '有实质性讨论但也有简单互动'
+    } else {
+      interactionStatus = '简单互动占比较高'
+    }
+
+    return {
+      hotTopics,
+      windDirection,
+      sentimentText: sentiment === 'positive' ? '积极' : sentiment === 'negative' ? '消极' : '中性',
+      isPositive: sentiment === 'positive',
+      discussionContent,
+      interactionStatus,
+      conclusion,
+      stats: {
+        questionCount,
+        experienceCount,
+        praiseCount
+      }
+    }
+  }
+
   // HTML粘贴功能已移除，仅支持Tampermonkey脚本
 
   return (
@@ -519,7 +616,6 @@ export default function PostAnalysisPage() {
               <div className="text-xs text-amber-700 space-y-1">
                 <p>• Chrome/Edge 用户：<a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">点击安装 Tampermonkey</a></p>
                 <p>• Safari 用户：Mac App Store 搜索"Tampermonkey"安装</p>
-                <p>• 安装成功后，浏览器右上角会出现一个黑色/彩色的圆形图标</p>
               </div>
             </div>
 
@@ -538,7 +634,7 @@ export default function PostAnalysisPage() {
                   </a>
                 </p>
                 <p>• 浏览器会跳转到 Tampermonkey 的安装确认页面</p>
-                <p>• 点击页面上的"安装"按钮（绿色按钮）</p>
+                <p>• 点击页面上的"安装"按钮</p>
                 <div className="bg-red-50 p-2 rounded border border-red-200 mt-2">
                   <p className="text-red-700 font-medium">⚠️ 重要：开启插件权限</p>
                   <p className="text-red-600 mt-1">安装完成后，点击浏览器右上角【三个点】-【扩展】-【管理扩展】- 找到 Tampermonkey - 点击【详细信息】- 打开【允许访问文件网址】和【在所有网站上】</p>
@@ -652,6 +748,56 @@ export default function PostAnalysisPage() {
             <p className="text-sm text-gray-600 mt-3 bg-gray-50 p-3 rounded-lg">
               <span className="font-medium">讨论焦点：</span>{result.comments.mainTopic}
             </p>
+
+            {/* 评论区总结 */}
+            {result.comments.summary && (
+              <div className="mt-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100">
+                <h4 className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                  <span>📊</span>
+                  评论区总结
+                </h4>
+
+                {/* 风向标签 */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    result.comments.summary.isPositive
+                      ? 'bg-green-100 text-green-700'
+                      : result.comments.summary.sentimentText === '消极'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    情感: {result.comments.summary.sentimentText}
+                  </span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                    风向: {result.comments.summary.windDirection}
+                  </span>
+                  <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                    有效评论率: {result.commentQuality.effectiveRate}%
+                  </span>
+                </div>
+
+                {/* 讨论内容 */}
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium text-purple-800">讨论内容：</span>
+                    评论区主要在{result.comments.summary.discussionContent}，{result.comments.summary.interactionStatus}。
+                  </p>
+
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium text-purple-800">互动特点：</span>
+                    {result.comments.summary.stats.questionCount > 0 && `${result.comments.summary.stats.questionCount}条提问、`}
+                    {result.comments.summary.stats.experienceCount > 0 && `${result.comments.summary.stats.experienceCount}条经验分享、`}
+                    {result.comments.summary.stats.praiseCount > 0 && `${result.comments.summary.stats.praiseCount}条赞美`}
+                    {result.comments.summary.stats.questionCount === 0 && result.comments.summary.stats.experienceCount === 0 && result.comments.summary.stats.praiseCount === 0 && '以普通互动为主'}
+                  </p>
+
+                  <div className="bg-white rounded p-3 border border-purple-200 mt-3">
+                    <p className="text-sm font-medium text-purple-900 mb-1">💡 结论与建议：</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{result.comments.summary.conclusion}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* 显示评论 */}
             {extractedData?.commentList && extractedData.commentList.length > 0 && (
