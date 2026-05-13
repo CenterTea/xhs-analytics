@@ -187,17 +187,35 @@ export default function PostAnalysisPage() {
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
         const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][]
 
-        // 解析数据（假设第一行是表头）
-        if (jsonData.length < 2) {
+        // 解析数据 - 处理小红书导出文件的格式
+        // 小红书导出文件通常第一行是提示文字 "最多导出排序后前1000条笔记"，真正的表头在第二行
+        let headerRowIndex = 0
+        let dataStartIndex = 1
+
+        // 检查第一行是否是表头（包含多个不同的列名）
+        const firstRow = jsonData[0] as string[]
+        const firstRowValues = firstRow.map(h => h?.toString().trim() || '')
+        const uniqueFirstRowValues = [...new Set(firstRowValues)].filter(v => v !== '')
+
+        // 如果第一行所有值都相同（或者是空值），说明这是提示行，表头在第二行
+        if (uniqueFirstRowValues.length <= 1) {
+          headerRowIndex = 1
+          dataStartIndex = 2
+          console.log('检测到第一行是提示文字，使用第二行作为表头')
+        }
+
+        if (jsonData.length < dataStartIndex + 1) {
           alert('文件数据为空')
           return
         }
 
-        const headers = jsonData[0].map((h: any) => h?.toString().trim() || '')
+        const headers = jsonData[headerRowIndex].map((h: any) => h?.toString().trim() || '')
         const posts: Post[] = []
 
         console.log('Excel列名:', headers)
-        console.log('第一行数据样例:', jsonData[1])
+        console.log('表头所在行:', headerRowIndex)
+        console.log('数据起始行:', dataStartIndex)
+        console.log('第一行数据样例:', jsonData[dataStartIndex])
 
         // 查找需要的列索引 - 优先精确匹配"笔记标题"
         const titleIndex = headers.findIndex((h: string) => h === '笔记标题') !== -1
@@ -236,7 +254,7 @@ export default function PostAnalysisPage() {
           return
         }
 
-        for (let i = 1; i < jsonData.length; i++) {
+        for (let i = dataStartIndex; i < jsonData.length; i++) {
           const row = jsonData[i]
           if (!row[finalTitleIndex]) continue
 
@@ -261,8 +279,9 @@ export default function PostAnalysisPage() {
           const shares = getNum(sharesIndex)
           const newFollowers = getNum(newFollowersIndex)
           const avgWatchTime = getNum(avgWatchTimeIndex)
-          if (i <= 3) {
-            console.log(`第${i}行数据:`, { title: row[finalTitleIndex], avgWatchTime, rawValue: row[avgWatchTimeIndex] })
+          const actualRowNum = i - dataStartIndex + 1
+          if (actualRowNum <= 3) {
+            console.log(`第${actualRowNum}行数据:`, { title: row[finalTitleIndex], avgWatchTime, rawValue: row[avgWatchTimeIndex] })
           }
 
           const post: Post = {
