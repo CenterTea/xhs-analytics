@@ -24,7 +24,7 @@ export default function VerticalityGauge({ data }: { data: VerticalityData }) {
           <ProgressBar
             value={data.score}
             max={100}
-            color={data.score >= 70 ? 'bg-green-500' : data.score >= 50 ? 'bg-yellow-500' : 'bg-red-500'}
+            color={data.score >= 80 ? 'bg-green-500' : data.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}
           />
           <p className="text-sm text-gray-600 mt-3">{data.assessment}</p>
           <p className="text-sm text-gray-500 mt-2 italic">{data.suggestion}</p>
@@ -37,7 +37,7 @@ export default function VerticalityGauge({ data }: { data: VerticalityData }) {
               <p>• 你的TOP1话题占比: {(topWeight * 100).toFixed(1)}%</p>
               <p>• TOP2话题合计占比: {(top2Weight * 100).toFixed(1)}%</p>
               <p>• 计算: {(topWeight * 30).toFixed(1)} + {(top2Weight * 70).toFixed(1)} = {data.score}分</p>
-              <p className="text-gray-400 mt-1">高分标准：≥75分（内容高度聚焦），50-75分（有一定聚焦），&lt;50分（话题分散）</p>
+              <p className="text-gray-400 mt-1">60分为及格线：≥80分（高度聚焦），60-80分（有一定聚焦），{'<'}60分（话题分散）</p>
             </div>
           </div>
         </div>

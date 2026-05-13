@@ -10,7 +10,7 @@ interface MonetizationData {
 }
 
 export default function MonetizationMatrix({ data }: { data: MonetizationData }) {
-  const variant = data.score >= 70 ? 'great' : data.score >= 45 ? 'normal' : 'poor'
+  const variant = data.score >= 80 ? 'great' : data.score >= 60 ? 'normal' : 'poor'
 
   return (
     <Card>
@@ -21,13 +21,13 @@ export default function MonetizationMatrix({ data }: { data: MonetizationData })
             <span className="text-4xl font-bold text-gray-900">{data.score}</span>
             <span className="text-gray-400 text-sm mb-1">/ 100</span>
             <Badge variant={variant}>
-              {data.score >= 70 ? '可尝试变现' : data.score >= 45 ? '积累中' : '先养号'}
+              {data.score >= 80 ? '可尝试变现' : data.score >= 60 ? '积累中' : '先养号'}
             </Badge>
           </div>
           <ProgressBar
             value={data.score}
             max={100}
-            color={data.score >= 70 ? 'bg-green-500' : data.score >= 45 ? 'bg-yellow-500' : 'bg-gray-400'}
+            color={data.score >= 80 ? 'bg-green-500' : data.score >= 60 ? 'bg-yellow-500' : 'bg-gray-400'}
           />
           <p className="text-sm text-gray-600 mt-3">{data.readiness}</p>
 
@@ -39,7 +39,7 @@ export default function MonetizationMatrix({ data }: { data: MonetizationData })
               <p>• 内容垂直度：聚焦度越高，品牌方越愿意合作</p>
               <p>• 粉丝粘性：粉丝留存意愿决定长期变现能力</p>
               <p>• 互动率表现：互动率 × 1000（封顶100分）</p>
-              <p className="text-gray-400 mt-1">分级标准：≥70分（可变现），45-70分（积累中），&lt;45分（先养号）</p>
+              <p className="text-gray-400 mt-1">60分为及格线：≥80分（可尝试变现），60-80分（积累中），{'<'}60分（先养号）</p>
             </div>
           </div>
         </div>

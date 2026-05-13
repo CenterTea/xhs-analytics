@@ -23,7 +23,7 @@ export default function FanStickiness({ data }: { data: FanStickinessData }) {
           <ProgressBar
             value={data.score}
             max={100}
-            color={data.score >= 60 ? 'bg-green-500' : data.score >= 40 ? 'bg-yellow-500' : 'bg-red-500'}
+            color={data.score >= 80 ? 'bg-green-500' : data.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}
           />
           <p className="text-xs text-gray-400 mt-1">60分为及格线</p>
         </div>
