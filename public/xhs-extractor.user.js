@@ -523,66 +523,29 @@
 
     // 反爬虫检测函数
     function detectAntiScraping() {
-        // 检测1：验证码弹窗
-        const captchaSelectors = [
-            '[class*="captcha"]',
-            '[class*="verify"]',
-            '[class*="verification"]',
-            '[class*="security"]',
-            'div:contains("验证")',
-            'div:contains("安全")',
-            'div:contains("请点击")',
-            'div[class*="modal"], div[class*="popup"]'
-        ];
+        // 只检测明确可见的反爬虫弹窗/提示，避免误判正常页面元素
 
-        for (const selector of captchaSelectors) {
-            const el = document.querySelector(selector);
-            if (el && el.offsetParent !== null) {
-                const text = el.textContent;
-                if (/验证|安全|请点击|拖动滑块|图形验证|人机验证/i.test(text)) {
-                    return { detected: true, reason: '检测到验证码/安全验证', element: el };
-                }
+        // 检测1：验证码/安全验证弹窗（仅检测可见的模态弹窗）
+        const modalElements = document.querySelectorAll('[class*="modal"], [class*="popup"], [class*="dialog"], [class*="overlay"], [class*="mask"]');
+        for (const el of modalElements) {
+            if (el.offsetParent === null || el.offsetHeight < 50) continue;
+            const text = el.textContent || '';
+            if (/验证|拖动滑块|图形验证|人机验证|安全验证|请点击/.test(text) && text.length < 500) {
+                return { detected: true, reason: '检测到验证码/安全验证弹窗' };
             }
         }
 
-        // 检测2：操作频繁提示
-        const bodyText = document.body?.textContent || '';
-        if (/操作频繁|请稍后再试|访问受限|请求过多|Too Many Requests|rate limit/i.test(bodyText)) {
-            return { detected: true, reason: '检测到操作频繁提示' };
-        }
-
-        // 检测3：登录弹窗（要求重新登录）
-        const loginSelectors = [
-            '[class*="login"]',
-            '[class*="auth"]'
-        ];
-        for (const selector of loginSelectors) {
-            const el = document.querySelector(selector);
-            if (el && el.offsetParent !== null) {
-                const text = el.textContent;
-                if (/登录|扫码|手机号/i.test(text) && el.offsetHeight > 200) {
-                    return { detected: true, reason: '检测到登录弹窗', element: el };
-                }
+        // 检测2：操作频繁提示（只检查toast/通知类元素，不扫描整个页面）
+        const toastElements = document.querySelectorAll('[class*="toast"], [class*="notice"], [class*="message"], [class*="tips"], [class*="alert"]');
+        for (const el of toastElements) {
+            if (el.offsetParent === null) continue;
+            const text = el.textContent || '';
+            if (text.length < 100 && /操作频繁|请稍后再试|访问受限|请求过多/i.test(text)) {
+                return { detected: true, reason: '检测到操作频繁提示' };
             }
         }
 
-        // 检测4：评论区域消失或显示错误
-        const errorSelectors = [
-            '[class*="error"]',
-            '[class*="empty"]',
-            '[class*="fail"]'
-        ];
-        for (const selector of errorSelectors) {
-            const el = document.querySelector(selector);
-            if (el && el.offsetParent !== null) {
-                const text = el.textContent;
-                if (/加载失败|网络错误|请重试|empty|error/i.test(text)) {
-                    return { detected: true, reason: '检测到加载错误', element: el };
-                }
-            }
-        }
-
-        // 检测5：页面被重定向到非帖子页面
+        // 检测3：页面被重定向到非帖子页面
         if (!window.location.href.includes('/explore/')) {
             return { detected: true, reason: '页面已离开帖子详情页' };
         }
@@ -650,15 +613,6 @@
         const isContainerScroll = !!commentContainer;
 
         console.log('[小红书数据提取器] 评论区容器:', commentContainer ? '找到' : '未找到，使用页面滚动');
-
-        // 首先检查是否已触发反爬虫
-        let checkResult = detectAntiScraping();
-        if (checkResult.detected) {
-            console.log('[小红书数据提取器] ⚠️ 初始检测:', checkResult.reason);
-            showAntiScrapingWarning(checkResult.reason);
-            showToast('⚠️ ' + checkResult.reason + '，将使用已收集数据', true);
-            return comments;
-        }
 
         // 展开所有楼中楼回复（先点击所有展开按钮）
         console.log('[小红书数据提取器] 开始展开楼中楼评论...');
