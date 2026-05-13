@@ -320,7 +320,7 @@ export default function DashboardPage() {
 
             <div className="bg-blue-50 rounded-lg p-4 border border-blue-100 text-sm text-blue-800 mb-4">
               <p className="font-medium text-blue-900 mb-1">💡 关于数据对比</p>
-              <p>对比的是「通用-新手期(0-1000粉)」账号的平均数据。绝对数值差异很大，重点看相对指标。</p>
+              <p>对比的是「{benchmarkMatch.categoryName} · {benchmark.followerRange}粉丝」账号的平均数据。系统根据你的内容类型和粉丝量级自动匹配对应赛道。绝对数值差异很大，重点看相对指标。</p>
             </div>
 
             {/* 漏斗各层含义 */}
