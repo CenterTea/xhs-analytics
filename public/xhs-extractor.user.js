@@ -26,14 +26,14 @@
 
     // 智能分批配置
     const BATCH_CONFIG = {
-        maxExpandRoundsPerBatch: 3,      // 每批展开轮数
-        maxScrollCountPerBatch: 2,       // 每批滚动次数
-        expandDelay: [800, 1500],        // 展开延迟
-        scrollDelay: [3000, 5000],       // 滚动延迟
-        batchCooldown: [6000, 10000],    // 批次间冷却时间（6-10秒）
-        commentsPerBatch: 30,            // 每批目标评论数
+        maxExpandRoundsPerBatch: 8,      // 每批展开轮数（增加展开力度）
+        maxScrollCountPerBatch: 4,       // 每批滚动次数（增加滚动次数）
+        expandDelay: [600, 1200],        // 展开延迟
+        scrollDelay: [2500, 4000],       // 滚动延迟
+        batchCooldown: [4000, 7000],     // 批次间冷却时间（4-7秒）
+        commentsPerBatch: 80,            // 每批目标评论数（增加到80条）
         maxTotalComments: 500,           // 最大提取数量
-        maxBatches: 20                   // 最大批次数
+        maxBatches: 15                   // 最大批次数（减少批次数，增加每批效率）
     };
 
     // 等待页面加载完成
@@ -247,8 +247,8 @@
                         foundInRound++;
                         await sleep(BATCH_CONFIG.expandDelay[0], BATCH_CONFIG.expandDelay[1]);
 
-                        // 每批最多展开10个就停止
-                        if (expandCount >= 10) break;
+                        // 每批最多展开30个就停止
+                        if (expandCount >= 30) break;
                     }
                 }
 
@@ -299,8 +299,8 @@
             if (batchNewCount === 0) {
                 noNewCommentsCount++;
                 console.log(`[小红书数据提取器] 本批无新评论（连续${noNewCommentsCount}次）`);
-                if (noNewCommentsCount >= 3) {
-                    console.log('[小红书数据提取器] 连续3批无新评论，判断已提取完毕');
+                if (noNewCommentsCount >= 5) {
+                    console.log('[小红书数据提取器] 连续5批无新评论，判断已提取完毕');
                     break;
                 }
             } else {
