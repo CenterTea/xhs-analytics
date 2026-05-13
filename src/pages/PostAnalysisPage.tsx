@@ -221,6 +221,7 @@ export default function PostAnalysisPage() {
           : headers.findIndex((h: string) => h.includes('观看时长') || h.includes('平均观看') || h.includes('观看时间'))
 
         console.log('找到的列索引:', { finalTitleIndex, impressionsIndex, viewsIndex, likesIndex, savesIndex, commentsIndex, sharesIndex, newFollowersIndex, avgWatchTimeIndex })
+        console.log('人均观看时长列名:', headers[avgWatchTimeIndex], '索引:', avgWatchTimeIndex)
 
         // 检查是否找到标题列
         if (finalTitleIndex === -1) {
@@ -251,6 +252,9 @@ export default function PostAnalysisPage() {
           const shares = getNum(sharesIndex)
           const newFollowers = getNum(newFollowersIndex)
           const avgWatchTime = getNum(avgWatchTimeIndex)
+          if (i <= 3) {
+            console.log(`第${i}行数据:`, { title: row[finalTitleIndex], avgWatchTime, rawValue: row[avgWatchTimeIndex] })
+          }
 
           const post: Post = {
             id: `post-${i}`,
