@@ -10,9 +10,6 @@ interface FanStickinessData {
 }
 
 export default function FanStickiness({ data }: { data: FanStickinessData }) {
-  // 反推粉丝增长趋势用于展示计算依据
-  const trendFromScore = data.score >= 70 ? ((data.score - 70) / 100) : ((data.score - 50) / 50)
-
   return (
     <Card>
       <h2 className="text-lg font-semibold text-gray-900 mb-4">粉丝粘性</h2>
@@ -28,6 +25,7 @@ export default function FanStickiness({ data }: { data: FanStickinessData }) {
             max={100}
             color={data.score >= 60 ? 'bg-green-500' : data.score >= 40 ? 'bg-yellow-500' : 'bg-red-500'}
           />
+          <p className="text-xs text-gray-400 mt-1">60分为及格线</p>
         </div>
         <div>
           <p className="text-xs text-gray-400 mb-1">粉丝互动占比</p>
@@ -41,7 +39,7 @@ export default function FanStickiness({ data }: { data: FanStickinessData }) {
           <div className="flex items-center gap-4">
             <div>
               <p className="text-lg font-bold text-green-600">+{data.newVsLostFollowers.gained}</p>
-              <p className="text-xs text-gray-400">新增粉丝</p>
+              <p className="text-xs text-gray-400">新增粉丝（估算）</p>
             </div>
             <div>
               <p className="text-lg font-bold text-red-400">-{data.newVsLostFollowers.lost}</p>
@@ -53,15 +51,25 @@ export default function FanStickiness({ data }: { data: FanStickinessData }) {
       <p className="text-sm text-gray-600 mt-4">{data.assessment}</p>
       <p className="text-sm text-gray-500 mt-1 italic">{data.suggestion}</p>
 
-      {/* 得分依据 */}
-      <div className="mt-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
-        <h4 className="text-xs font-semibold text-gray-700 mb-2">📊 得分维度</h4>
-        <div className="space-y-1 text-xs text-gray-600">
-          <p><strong>粉丝增长趋势</strong> — 得分核心依据</p>
-          <p>• 趋势 {'>'} +10%（加速增长）→ 基础分70 + 增长系数 → 得分 {Math.min(100, Math.round(70 + Math.max(0, trendFromScore) * 100))}</p>
-          <p>• 趋势 -10% ~ +10%（平缓增长）→ 基础分50 ± 趋势系数 → 得分 40-60</p>
-          <p>• 趋势 {'<'} -10%（下降趋势）→ 基础分50 - 下降系数 → 得分 0-40</p>
-          <p className="text-gray-400 mt-1">流失粉丝按新增粉丝的30%估算（行业参考值）</p>
+      {/* 得分依据 + 流失粉丝估算说明 */}
+      <div className="mt-4 bg-gray-50 rounded-lg p-3 border border-gray-200 space-y-3">
+        <div>
+          <h4 className="text-xs font-semibold text-gray-700 mb-2">📊 粘性得分维度</h4>
+          <div className="space-y-1 text-xs text-gray-600">
+            <p>• 粉丝增长趋势 {'>'} +15% → 75分起步 + 增长系数 → 得分 75-100</p>
+            <p>• 粉丝增长趋势 -5% ~ +15% → 60分起步 ± 趋势系数 → 得分 50-80</p>
+            <p>• 粉丝增长趋势 {'<'} -5% → 60分起步 + 趋势系数（负数） → 得分 0-60</p>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 pt-3">
+          <h4 className="text-xs font-semibold text-gray-700 mb-2">🔍 流失粉丝估算说明</h4>
+          <div className="text-xs text-gray-600 space-y-1">
+            <p>• 小红书导出数据仅包含<b>「净增粉丝」</b>，没有单独的"新增"和"流失"列</p>
+            <p>• 估算公式：<b>新增 ≈ 净增 × 1.25</b>，<b>流失 ≈ 新增 − 净增</b></p>
+            <p>• 估算依据：新手账号粉丝流失率约为 <b>20%</b>（行业参考值）</p>
+            <p className="text-amber-600 mt-2">⚠️ 这只是估算值，仅供参考。如果需要精确数据，请在创作者中心手动记录每日粉丝变化。</p>
+          </div>
         </div>
       </div>
     </Card>
