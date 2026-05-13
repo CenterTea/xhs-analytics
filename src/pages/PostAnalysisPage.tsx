@@ -252,7 +252,23 @@ export default function PostAnalysisPage() {
         const savesIndex = headers.findIndex((h: string) => h.includes('收藏'))
         const commentsIndex = headers.findIndex((h: string) => h.includes('评论'))
         const sharesIndex = headers.findIndex((h: string) => h.includes('分享'))
-        const newFollowersIndex = headers.findIndex((h: string) => h.includes('粉丝'))
+        // 精确匹配涨粉相关列，避免误匹配"粉丝数""粉丝画像"等列
+        let newFollowersIndex = headers.findIndex((h: string) => {
+          const t = h.trim()
+          return t === '新增粉丝' || t === '涨粉' || t === '粉丝净增' ||
+                 t.includes('新增粉丝') || t.includes('涨粉数') || t.includes('粉丝增长')
+        })
+        // 降级匹配
+        if (newFollowersIndex === -1) {
+          newFollowersIndex = headers.findIndex((h: string) => {
+            const t = h.trim()
+            return (t.includes('涨粉') || t.includes('新增粉') || t.includes('净增粉')) &&
+                   !t.includes('粉丝数')
+          })
+        }
+        if (newFollowersIndex === -1) {
+          console.log('⚠️ 未找到涨粉列，将使用 0')
+        }
         // 查找观看时长列 - 直接精确匹配"人均观看时长"
         const avgWatchTimeIndex = headers.findIndex((h: string) => {
           const trimmed = h.trim()

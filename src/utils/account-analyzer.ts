@@ -111,21 +111,6 @@ function analyzeFanStickiness(_posts: Post[], stats: AccountStats) {
     ? Math.min(0.5, 0.3 + stats.avgInteractionRate * 2)
     : 0
 
-  // 流失粉丝估算：小红书导出数据只有"净增粉丝"，没有单独的流失数
-  // 估算逻辑：假设流失率约 20%（新手账号典型值），净增 = 新增 - 流失
-  // 如果净增 > 0：新增 ≈ 净增 × 1.25，流失 = 新增 - 净增
-  // 如果净增 ≤ 0：直接取绝对值作为流失，新增 = 0
-  const netGrowth = stats.netFollowerGrowth
-  let gained: number
-  let lost: number
-  if (netGrowth > 0) {
-    gained = Math.round(netGrowth * 1.25)
-    lost = gained - netGrowth
-  } else {
-    gained = 0
-    lost = Math.abs(netGrowth)
-  }
-
   let score: number
   let assessment: string
   let suggestion: string
@@ -156,7 +141,7 @@ function analyzeFanStickiness(_posts: Post[], stats: AccountStats) {
   return {
     score,
     fanEngagementRate,
-    newVsLostFollowers: { gained, lost },
+    newVsLostFollowers: { gained: stats.netFollowerGrowth, lost: 0 },
     assessment,
     suggestion,
   }

@@ -36,7 +36,6 @@ export default function AccountAnalysisPage() {
           <FanAnalysisDetail
             posts={posts}
             stats={accountStats}
-            fanStickiness={accountAnalysis.fanStickiness}
           />
           <MonetizationMatrix data={accountAnalysis.monetizationPotential} />
           <DirectionAdvice

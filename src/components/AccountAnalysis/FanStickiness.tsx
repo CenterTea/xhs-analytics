@@ -35,17 +35,11 @@ export default function FanStickiness({ data }: { data: FanStickinessData }) {
           <p className="text-xs text-gray-400">粉丝互动 / 总互动</p>
         </div>
         <div>
-          <p className="text-xs text-gray-400 mb-1">新增 vs 流失</p>
-          <div className="flex items-center gap-4">
-            <div>
-              <p className="text-lg font-bold text-green-600">+{data.newVsLostFollowers.gained}</p>
-              <p className="text-xs text-gray-400">新增粉丝（估算）</p>
-            </div>
-            <div>
-              <p className="text-lg font-bold text-red-400">-{data.newVsLostFollowers.lost}</p>
-              <p className="text-xs text-gray-400">流失粉丝（估算）</p>
-            </div>
-          </div>
+          <p className="text-xs text-gray-400 mb-1">净增粉丝</p>
+          <p className={`text-2xl font-bold ${data.newVsLostFollowers.gained >= 0 ? 'text-green-600' : 'text-red-400'}`}>
+            {data.newVsLostFollowers.gained >= 0 ? '+' : ''}{data.newVsLostFollowers.gained}
+          </p>
+          <p className="text-xs text-gray-400">数据周期内净增</p>
         </div>
       </div>
       <p className="text-sm text-gray-600 mt-4">{data.assessment}</p>
@@ -62,15 +56,6 @@ export default function FanStickiness({ data }: { data: FanStickinessData }) {
           </div>
         </div>
 
-        <div className="border-t border-gray-200 pt-3">
-          <h4 className="text-xs font-semibold text-gray-700 mb-2">🔍 流失粉丝估算说明</h4>
-          <div className="text-xs text-gray-600 space-y-1">
-            <p>• 小红书导出数据仅包含<b>「净增粉丝」</b>，没有单独的"新增"和"流失"列</p>
-            <p>• 估算公式：<b>新增 ≈ 净增 × 1.25</b>，<b>流失 ≈ 新增 − 净增</b></p>
-            <p>• 估算依据：新手账号粉丝流失率约为 <b>20%</b>（行业参考值）</p>
-            <p className="text-amber-600 mt-2">⚠️ 这只是估算值，仅供参考。如果需要精确数据，请在创作者中心手动记录每日粉丝变化。</p>
-          </div>
-        </div>
       </div>
     </Card>
   )

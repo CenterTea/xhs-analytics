@@ -9,16 +9,9 @@ import { classifyContent } from '../../utils/content-classifier'
 interface FanAnalysisDetailProps {
   posts: Post[]
   stats: AccountStats
-  fanStickiness: {
-    score: number
-    fanEngagementRate: number
-    newVsLostFollowers: { gained: number; lost: number }
-    assessment: string
-    suggestion: string
-  }
 }
 
-export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAnalysisDetailProps) {
+export default function FanAnalysisDetail({ posts, stats }: FanAnalysisDetailProps) {
   // 动态匹配 benchmark，与 Dashboard 保持一致
   const titles = posts.map(p => p.title).filter(Boolean)
   const classification = classifyContent(titles)
@@ -101,18 +94,16 @@ export default function FanAnalysisDetail({ posts, stats, fanStickiness }: FanAn
     <div className="space-y-6">
       <Card>
         <h3 className="text-sm font-semibold text-gray-800 mb-4">粉丝增长分析</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
           <div>
             <p className="text-xs text-gray-400">净增粉丝</p>
-            <p className="text-xl font-bold text-green-600">+{stats.netFollowerGrowth}</p>
+            <p className={`text-xl font-bold ${stats.netFollowerGrowth >= 0 ? 'text-green-600' : 'text-red-400'}`}>
+              {stats.netFollowerGrowth >= 0 ? '+' : ''}{stats.netFollowerGrowth}
+            </p>
           </div>
           <div>
-            <p className="text-xs text-gray-400">新增</p>
-            <p className="text-xl font-bold text-gray-900">+{fanStickiness.newVsLostFollowers.gained}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400">流失（估算）</p>
-            <p className="text-xl font-bold text-red-400">-{fanStickiness.newVsLostFollowers.lost}</p>
+            <p className="text-xs text-gray-400">平均涨粉率</p>
+            <p className="text-xl font-bold text-gray-900">{(stats.avgFollowConversionRate * 100).toFixed(2)}%</p>
           </div>
           <div>
             <p className="text-xs text-gray-400">增长趋势</p>
