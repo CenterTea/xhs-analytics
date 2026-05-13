@@ -686,41 +686,72 @@
                 const author = link.textContent.trim().split(/\s+/)[0];
                 if (!author || author.length < 1 || author.length > 50) return;
 
-                // 向上查找评论容器（2-6层）
-                let container = link.parentElement;
-                for (let i = 0; i < 7; i++) {
-                    if (!container) break;
-                    const text = container.textContent || '';
-                    // 评论容器的文本通常比单行昵称长很多
-                    if (text.length > author.length + 3 && text.length < 3000) {
+                // 判断是否是元数据文本
+                const isMetadata = (text) => {
+                    if (!text) return true;
+                    if (/^\d+$/.test(text)) return true;
+                    if (/^\d{4}[\-\/年]/.test(text)) return true;
+                    if (/IP属地|编辑于/.test(text)) return true;
+                    if (/^\d+赞?$/.test(text)) return true;
+                    if (/^回复\s*$/.test(text)) return true;
+                    if (/展开.+回复|查看更多/.test(text)) return true;
+                    if (text.length > 2000) return true;
+                    return false;
+                };
+
+                // 向上查找评论行容器（包含作者+内容+元数据的行，不包含嵌套回复）
+                let row = link.parentElement;
+                for (let i = 0; i < 4; i++) {
+                    if (!row) break;
+                    const children = row.children;
+                    // 找一个有多个子元素但不是过大的容器
+                    if (children.length >= 2 && children.length <= 20 && row.textContent.length < 3000) {
                         break;
                     }
-                    container = container.parentElement;
+                    row = row.parentElement;
                 }
-                if (!container) return;
+                if (!row) return;
 
-                const fullText = container.textContent || '';
+                // 在此行内查找评论内容：遍历直接子元素，找到最长且不是元数据的文本
+                let bestContent = '';
+                const directChildren = row.children;
+                const candidates = [];
 
-                // 提取评论内容：找到作者名之后、时间/IP/点赞之前的文本
-                const authorIdx = fullText.indexOf(author);
-                if (authorIdx === -1) return;
+                for (const child of directChildren) {
+                    // 跳过包含用户链接的（可能是嵌套回复）
+                    if (child.querySelector('a[href*="/user/"]')) continue;
+                    const text = child.textContent.trim();
+                    if (text.length >= 2 && text.length <= 2000 && !isMetadata(text) && text !== author) {
+                        candidates.push({ text, len: text.length });
+                    }
+                }
 
-                const textAfterAuthor = fullText.substring(authorIdx + author.length);
+                // 如果有候选，选最长的一个
+                if (candidates.length > 0) {
+                    candidates.sort((a, b) => b.len - a.len);
+                    bestContent = candidates[0].text;
+                }
 
-                // 去除时间、IP属地、编辑于、回复按钮、点赞数等元数据
-                let content = textAfterAuthor
-                    .replace(/\d{4}[\-\/年]\d{1,2}[\-\/月]\d{1,2}[\s\d:]*/g, '')
-                    .replace(/IP属地[：:]\s*\S+/g, '')
-                    .replace(/编辑于\s*\S+/g, '')
-                    .replace(/^\d+赞$|^\d+$/gm, '')
-                    .replace(/^回复\s*$/gm, '')
-                    .replace(/展开\d+条回复/g, '')
-                    .replace(/查看更多回复/g, '')
-                    .trim();
+                // 备选：从 row 下所有 span 中找最长的有效文本
+                if (!bestContent) {
+                    const rowSpans = row.querySelectorAll(':scope > * span, :scope > span');
+                    for (const span of rowSpans) {
+                        if (span.querySelector('a[href*="/user/"]')) continue;
+                        const text = span.textContent.trim();
+                        if (text.length >= 2 && text.length <= 2000 && !isMetadata(text) && text !== author) {
+                            if (text.length > (bestContent ? bestContent.length : 0)) {
+                                bestContent = text;
+                            }
+                        }
+                    }
+                }
 
-                // 过滤太短或像是元数据的文本
-                if (content.length < 2) return;
-                if (content.length > 2000) return;
+                // 清理内容中残留的 @username 引用
+                let content = bestContent.replace(/@\S+/g, '').trim();
+                // 清理 IP 地址格式
+                content = content.replace(/IP[：:]\S+/g, '').trim();
+
+                if (!content || content.length < 2) return;
                 if (/^\d+$/.test(content)) return;
 
                 // 去重
@@ -728,18 +759,16 @@
                 if (processed.has(key)) return;
                 processed.add(key);
 
-                // 提取点赞数
+                // 提取点赞数（在 row 及其父级找）
                 let likes = 0;
-                const spans = container.querySelectorAll('span');
-                for (const span of spans) {
+                const parent = row.parentElement || row;
+                const allSpans = parent.querySelectorAll('span');
+                for (const span of allSpans) {
                     const t = span.textContent.trim();
                     const m = t.match(/^(\d+)赞?$/);
                     if (m) {
                         const n = parseInt(m[1]);
-                        if (n > 0 && n < 100000) {
-                            likes = n;
-                            break;
-                        }
+                        if (n > 0 && n < 100000) { likes = n; break; }
                     }
                 }
 
