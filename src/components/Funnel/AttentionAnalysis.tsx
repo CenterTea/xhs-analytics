@@ -17,12 +17,12 @@ interface AttentionAnalysisProps {
 function estimateReadingTime(post: Post, content?: string, duration?: number, postType?: 'video' | 'image'): { time: number; note: string } {
   const actualType = postType || post.type
   if (actualType === 'video') {
-    // 视频：使用提供的视频时长，或默认60秒
+    // 视频：使用提供的视频时长 × 0.9
     const videoDuration = duration || 60
-    const estimatedTime = Math.round(videoDuration * 1.1)
+    const estimatedTime = Math.round(videoDuration * 0.9)
     return {
       time: estimatedTime,
-      note: '计算结果是根据原视频时长×1.1得出，考虑了用户倍速观看的习惯'
+      note: '计算结果是根据原视频时长×0.9得出，考虑了用户倍速观看的习惯'
     }
   } else {
     // 图文：按每分钟250字计算
