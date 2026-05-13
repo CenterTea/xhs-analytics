@@ -141,6 +141,8 @@
 
             const content = extractContent();
             const postTime = extractPostTime();
+            const videoInfo = extractVideoInfo();
+            console.log('[小红书数据提取器] 视频信息:', videoInfo);
 
             // 检查数据合理性
             if (title === '未提取到标题' || title.length < 3) {
@@ -161,6 +163,8 @@
                 comments: comments,
                 shares: shares,
                 postTime: postTime,
+                postType: videoInfo.type,
+                videoDuration: videoInfo.duration,
                 url: window.location.href,
                 extractTime: new Date().toISOString(),
                 commentList: commentList
@@ -449,6 +453,51 @@
         }
 
         return '';
+    }
+
+    function extractVideoInfo() {
+        // 从页面脚本中提取视频信息
+        const scripts = document.querySelectorAll('script');
+        for (const script of scripts) {
+            const text = script.textContent;
+
+            // 检测帖子类型
+            const typeMatch = text.match(/"type"\s*:\s*"(video|normal)"/);
+            const postType = typeMatch ? (typeMatch[1] === 'video' ? 'video' : 'image') : 'image';
+
+            if (postType === 'video') {
+                // 尝试提取视频时长（秒）
+                const durationPatterns = [
+                    /"videoDuration"\s*:\s*(\d+)/,           // 毫秒
+                    /"duration"\s*:\s*(\d+)/,                // 可能是毫秒
+                    /"video"\s*:\s*\{[^}]*"duration"\s*:\s*(\d+)/,
+                    /"videoInfo"\s*:\s*\{[^}]*"duration"\s*:\s*(\d+)/
+                ];
+
+                for (const pattern of durationPatterns) {
+                    const match = text.match(pattern);
+                    if (match) {
+                        const raw = parseInt(match[1]);
+                        // 如果数值很大（>10000），可能是毫秒，转换为秒
+                        const duration = raw > 10000 ? Math.round(raw / 1000) : raw;
+                        if (duration > 0 && duration < 36000) { // 合理范围：1秒~10小时
+                            return { type: 'video', duration: duration };
+                        }
+                    }
+                }
+            }
+
+            return { type: postType, duration: 0 };
+        }
+
+        // 备选：从页面上的 video 元素提取
+        const videoEl = document.querySelector('video');
+        if (videoEl && videoEl.duration && isFinite(videoEl.duration)) {
+            return { type: 'video', duration: Math.round(videoEl.duration) };
+        }
+
+        // 默认：图文
+        return { type: 'image', duration: 0 };
     }
 
     async function extractComments() {
