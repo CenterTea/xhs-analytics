@@ -758,7 +758,10 @@ export default function PostAnalysisPage() {
 
           {/* 观众注意力分析 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 观众注意力分析</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">📊 观众注意力分析</h2>
+            <p className="text-xs text-gray-500 mb-4">
+              如果是分析自己的帖子，可以在这里上传小红书创作平台导出的数据文件来深度解析自己的帖子
+            </p>
 
             {/* 情况1：没有主页数据，也没有本页上传的数据 */}
             {!hasExistingData && !fileData && (
