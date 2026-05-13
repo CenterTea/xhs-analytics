@@ -935,7 +935,7 @@ export default function PostAnalysisPage() {
                         </div>
                       </div>
                     </div>
-                    <AttentionAnalysis post={matchedPost} isOwnPost={true} content={extractedData?.content} duration={extractedData?.videoDuration} />
+                    <AttentionAnalysis post={matchedPost} isOwnPost={true} content={extractedData?.content} duration={extractedData?.videoDuration} postType={extractedData?.postType} />
                   </>
                 ) : (
                   <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
@@ -1038,7 +1038,7 @@ export default function PostAnalysisPage() {
                         </div>
                       </div>
                     </div>
-                    <AttentionAnalysis post={matchedPost} isOwnPost={true} content={extractedData?.content} duration={extractedData?.videoDuration} />
+                    <AttentionAnalysis post={matchedPost} isOwnPost={true} content={extractedData?.content} duration={extractedData?.videoDuration} postType={extractedData?.postType} />
                   </>
                 ) : (
                   <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">

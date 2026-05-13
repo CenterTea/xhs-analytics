@@ -6,6 +6,7 @@ interface AttentionAnalysisProps {
   isOwnPost: boolean
   content?: string // 帖子正文内容（用于计算图文阅读时长）
   duration?: number // 视频时长（秒）（用于计算视频预估时长）
+  postType?: 'video' | 'image' // 从页面提取的帖子类型，优先于 post.type（Excel 中 type 写死为 image）
 }
 
 /**
@@ -13,8 +14,9 @@ interface AttentionAnalysisProps {
  * - 图文：按每分钟250字计算
  * - 视频：视频时长 * 1.1（考虑用户倍速观看习惯）
  */
-function estimateReadingTime(post: Post, content?: string, duration?: number): { time: number; note: string } {
-  if (post.type === 'video') {
+function estimateReadingTime(post: Post, content?: string, duration?: number, postType?: 'video' | 'image'): { time: number; note: string } {
+  const actualType = postType || post.type
+  if (actualType === 'video') {
     // 视频：使用提供的视频时长，或默认60秒
     const videoDuration = duration || 60
     const estimatedTime = Math.round(videoDuration * 1.1)
@@ -33,7 +35,7 @@ function estimateReadingTime(post: Post, content?: string, duration?: number): {
   }
 }
 
-export default function AttentionAnalysis({ post, isOwnPost, content, duration }: AttentionAnalysisProps) {
+export default function AttentionAnalysis({ post, isOwnPost, content, duration, postType }: AttentionAnalysisProps) {
   if (!isOwnPost) {
     return (
       <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
@@ -50,7 +52,7 @@ export default function AttentionAnalysis({ post, isOwnPost, content, duration }
     )
   }
 
-  const { time: estimatedReadTime, note: estimationNote } = estimateReadingTime(post, content, duration)
+  const { time: estimatedReadTime, note: estimationNote } = estimateReadingTime(post, content, duration, postType)
   const avgWatchTime = post.avgWatchTime || 0
   const watchTimeRatio = avgWatchTime / estimatedReadTime
 
