@@ -72,20 +72,104 @@ export default function PostAnalysisPage() {
     }
   }, [location])
 
+  // 规范化标题用于匹配（移除emoji、特殊字符、所有类型空格）
+  const normalizeTitle = (title: string): string => {
+    return title
+      .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '') // 移除emoji
+      .replace(/\s+/g, '') // 移除所有空白字符（包括全角/半角空格、换行、制表符）
+      .replace(/[^一-龥a-zA-Z0-9]/g, '') // 只保留中文、英文、数字
+      .toLowerCase()
+  }
+
+  // 计算两个字符串的相似度（Levenshtein距离）
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const s1 = normalizeTitle(str1)
+    const s2 = normalizeTitle(str2)
+
+    if (s1 === s2) return 1.0
+    if (s1.length === 0 || s2.length === 0) return 0.0
+
+    // 简单的包含关系也算高相似度
+    if (s1.includes(s2) || s2.includes(s1)) {
+      const ratio = Math.min(s1.length, s2.length) / Math.max(s1.length, s2.length)
+      return 0.8 + ratio * 0.2 // 0.8-1.0之间
+    }
+
+    // 计算编辑距离
+    const matrix: number[][] = []
+    for (let i = 0; i <= s1.length; i++) {
+      matrix[i] = [i]
+    }
+    for (let j = 0; j <= s2.length; j++) {
+      matrix[0][j] = j
+    }
+
+    for (let i = 1; i <= s1.length; i++) {
+      for (let j = 1; j <= s2.length; j++) {
+        const cost = s1[i - 1] === s2[j - 1] ? 0 : 1
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        )
+      }
+    }
+
+    const distance = matrix[s1.length][s2.length]
+    const maxLength = Math.max(s1.length, s2.length)
+    return 1 - distance / maxLength
+  }
+
+  // 详细的匹配结果信息
+  const [matchDetails, setMatchDetails] = useState<{
+    extractedTitle: string
+    normalizedExtracted: string
+    comparisons: { title: string; normalized: string; similarity: number }[]
+    bestMatch: { title: string; similarity: number } | null
+    fileTitles: string[] // 数据文件中的前20个标题
+  } | null>(null)
+
   // 当提取的数据或数据源变化时，尝试匹配帖子
   useEffect(() => {
     if (extractedData && dataSource && dataSource.length > 0) {
       setIsCheckingMatch(true)
-      // 尝试匹配标题（完全匹配或包含关系）
-      const matched = dataSource.find(post => {
-        const extractedTitle = extractedData.title.trim()
-        const postTitle = post.title.trim()
-        // 完全匹配或一方包含另一方
-        return extractedTitle === postTitle ||
-               extractedTitle.includes(postTitle) ||
-               postTitle.includes(extractedTitle)
+
+      const normalizedExtracted = normalizeTitle(extractedData.title)
+      console.log('提取的标题:', extractedData.title)
+      console.log('规范化后:', normalizedExtracted)
+      console.log('数据源帖子数:', dataSource.length)
+
+      // 计算所有帖子的相似度
+      const comparisons = dataSource.map(post => {
+        const similarity = calculateSimilarity(extractedData.title, post.title)
+        return {
+          title: post.title,
+          normalized: normalizeTitle(post.title),
+          similarity
+        }
       })
-      setMatchedPost(matched || null)
+
+      // 按相似度排序
+      comparisons.sort((a, b) => b.similarity - a.similarity)
+
+      // 找到最佳匹配（相似度 > 0.6）
+      const bestComparison = comparisons[0]
+      const matched = bestComparison && bestComparison.similarity > 0.6
+        ? dataSource.find(post => post.title === bestComparison.title) || null
+        : null
+
+      console.log('匹配结果:', matched ? matched.title : '未匹配')
+      console.log('最佳匹配:', bestComparison)
+
+      setMatchDetails({
+        extractedTitle: extractedData.title,
+        normalizedExtracted,
+        comparisons: comparisons.slice(0, 10), // 只显示前10个
+        bestMatch: bestComparison ? { title: bestComparison.title, similarity: bestComparison.similarity } : null,
+        fileTitles: dataSource.slice(0, 20).map(p => p.title) // 数据文件中的前20个标题
+      })
+
+      setMatchedPost(matched)
       setIsCheckingMatch(false)
     }
   }, [extractedData, dataSource])
@@ -109,19 +193,26 @@ export default function PostAnalysisPage() {
           return
         }
 
-        const headers = jsonData[0]
+        const headers = jsonData[0].map((h: any) => h?.toString().trim() || '')
         const posts: Post[] = []
 
-        // 查找需要的列索引
-        const titleIndex = headers.findIndex(h => h?.toString().includes('标题'))
-        const impressionsIndex = headers.findIndex(h => h?.toString().includes('曝光'))
-        const viewsIndex = headers.findIndex(h => h?.toString().includes('阅读') || h?.toString().includes('播放'))
-        const likesIndex = headers.findIndex(h => h?.toString().includes('点赞'))
-        const savesIndex = headers.findIndex(h => h?.toString().includes('收藏'))
-        const commentsIndex = headers.findIndex(h => h?.toString().includes('评论'))
-        const sharesIndex = headers.findIndex(h => h?.toString().includes('分享'))
-        const newFollowersIndex = headers.findIndex(h => h?.toString().includes('粉丝'))
-        const avgWatchTimeIndex = headers.findIndex(h => h?.toString().includes('观看时长'))
+        console.log('Excel列名:', headers)
+
+        // 查找需要的列索引 - 优先精确匹配"笔记标题"
+        const titleIndex = headers.findIndex((h: string) => h === '笔记标题') !== -1
+          ? headers.findIndex((h: string) => h === '笔记标题')
+          : headers.findIndex((h: string) => h.includes('标题'))
+
+        const impressionsIndex = headers.findIndex((h: string) => h.includes('曝光'))
+        const viewsIndex = headers.findIndex((h: string) => h.includes('阅读') || h.includes('播放'))
+        const likesIndex = headers.findIndex((h: string) => h.includes('点赞'))
+        const savesIndex = headers.findIndex((h: string) => h.includes('收藏'))
+        const commentsIndex = headers.findIndex((h: string) => h.includes('评论'))
+        const sharesIndex = headers.findIndex((h: string) => h.includes('分享'))
+        const newFollowersIndex = headers.findIndex((h: string) => h.includes('粉丝'))
+        const avgWatchTimeIndex = headers.findIndex((h: string) => h.includes('观看时长'))
+
+        console.log('找到的列索引:', { titleIndex, impressionsIndex, viewsIndex, likesIndex, savesIndex, commentsIndex, sharesIndex, newFollowersIndex, avgWatchTimeIndex })
 
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i]
@@ -681,16 +772,58 @@ export default function PostAnalysisPage() {
                   <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
                     <div className="flex items-start gap-2">
                       <span className="text-xl">⚠️</span>
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-semibold text-amber-800">未找到匹配的帖子</p>
                         <p className="text-xs text-amber-700 mt-1">
-                          您的账号数据中没有找到与当前帖子标题匹配的记录。请检查：
+                          未找到相似度超过60%的匹配。请查看下方详细对比：
                         </p>
-                        <ul className="text-xs text-amber-700 mt-2 list-disc list-inside">
-                          <li>确保已在主页上传包含该帖子的数据文件</li>
-                          <li>帖子标题可能有差异</li>
-                          <li>或者尝试在本页重新上传数据文件</li>
-                        </ul>
+                        {/* 详细调试信息 */}
+                        {matchDetails && (
+                          <div className="mt-3 bg-white rounded p-3 text-xs border border-amber-200 space-y-2">
+                            <div className="bg-blue-50 p-2 rounded">
+                              <p className="font-medium text-blue-800">提取的标题：</p>
+                              <p className="text-gray-700">"{matchDetails.extractedTitle}"</p>
+                              <p className="text-gray-500 mt-1">规范化后: "{matchDetails.normalizedExtracted}"</p>
+                            </div>
+
+                            {matchDetails.bestMatch && (
+                              <div className="bg-yellow-50 p-2 rounded">
+                                <p className="font-medium text-yellow-800">最佳匹配（相似度: {(matchDetails.bestMatch.similarity * 100).toFixed(1)}%）：</p>
+                                <p className="text-gray-700">"{matchDetails.bestMatch.title}"</p>
+                              </div>
+                            )}
+
+                            <details className="mt-2">
+                              <summary className="cursor-pointer text-amber-700 font-medium">查看详细对比（前10条）</summary>
+                              <div className="mt-2 space-y-1 max-h-60 overflow-y-auto">
+                                {matchDetails.comparisons.map((comp, idx) => (
+                                  <div key={idx} className={`p-2 rounded ${comp.similarity > 0.6 ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
+                                    <div className="flex justify-between">
+                                      <span className={comp.similarity > 0.6 ? 'text-green-700 font-medium' : 'text-gray-600'}>
+                                        {idx + 1}. {comp.title.substring(0, 40)}{comp.title.length > 40 ? '...' : ''}
+                                      </span>
+                                      <span className={`font-mono ${comp.similarity > 0.6 ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {(comp.similarity * 100).toFixed(1)}%
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-400 text-[10px] mt-0.5">{comp.normalized}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+
+                            <details className="mt-2">
+                              <summary className="cursor-pointer text-blue-700 font-medium">查看数据文件中的所有标题（前20条）</summary>
+                              <div className="mt-2 bg-gray-50 rounded p-2 max-h-60 overflow-y-auto">
+                                {matchDetails.fileTitles.map((title, idx) => (
+                                  <div key={idx} className="text-xs text-gray-600 py-1 border-b border-gray-100 last:border-0">
+                                    {idx + 1}. {title}
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -742,16 +875,47 @@ export default function PostAnalysisPage() {
                   <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
                     <div className="flex items-start gap-2">
                       <span className="text-xl">⚠️</span>
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-semibold text-amber-800">未找到匹配的帖子</p>
                         <p className="text-xs text-amber-700 mt-1">
-                          上传的数据文件中没有找到与当前帖子标题匹配的记录。请检查：
+                          未找到相似度超过60%的匹配。请查看下方详细对比：
                         </p>
-                        <ul className="text-xs text-amber-700 mt-2 list-disc list-inside">
-                          <li>确保上传的是包含该帖子的数据文件</li>
-                          <li>帖子标题可能有差异，请核对后再试</li>
-                          <li>数据文件需要包含"标题"和"人均观看时长"列</li>
-                        </ul>
+                        {/* 详细调试信息 */}
+                        {matchDetails && (
+                          <div className="mt-3 bg-white rounded p-3 text-xs border border-amber-200 space-y-2">
+                            <div className="bg-blue-50 p-2 rounded">
+                              <p className="font-medium text-blue-800">提取的标题：</p>
+                              <p className="text-gray-700">"{matchDetails.extractedTitle}"</p>
+                              <p className="text-gray-500 mt-1">规范化后: "{matchDetails.normalizedExtracted}"</p>
+                            </div>
+
+                            {matchDetails.bestMatch && (
+                              <div className="bg-yellow-50 p-2 rounded">
+                                <p className="font-medium text-yellow-800">最佳匹配（相似度: {(matchDetails.bestMatch.similarity * 100).toFixed(1)}%）：</p>
+                                <p className="text-gray-700">"{matchDetails.bestMatch.title}"</p>
+                              </div>
+                            )}
+
+                            <details className="mt-2">
+                              <summary className="cursor-pointer text-amber-700 font-medium">查看详细对比（前10条）</summary>
+                              <div className="mt-2 space-y-1 max-h-60 overflow-y-auto">
+                                {matchDetails.comparisons.map((comp, idx) => (
+                                  <div key={idx} className={`p-2 rounded ${comp.similarity > 0.6 ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
+                                    <div className="flex justify-between">
+                                      <span className={comp.similarity > 0.6 ? 'text-green-700 font-medium' : 'text-gray-600'}>
+                                        {idx + 1}. {comp.title.substring(0, 40)}{comp.title.length > 40 ? '...' : ''}
+                                      </span>
+                                      <span className={`font-mono ${comp.similarity > 0.6 ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {(comp.similarity * 100).toFixed(1)}%
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-400 text-[10px] mt-0.5">{comp.normalized}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
