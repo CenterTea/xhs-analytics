@@ -4,22 +4,36 @@ import type { Post } from '../../types'
 interface AttentionAnalysisProps {
   post: Post
   isOwnPost: boolean
+  content?: string // 帖子正文内容（用于计算图文阅读时长）
+  duration?: number // 视频时长（秒）（用于计算视频预估时长）
 }
 
 /**
  * 估算帖子的阅读/观看时长
+ * - 图文：按每分钟250字计算
+ * - 视频：视频时长 * 1.1（考虑用户倍速观看习惯）
  */
-function estimateReadingTime(post: Post): number {
+function estimateReadingTime(post: Post, content?: string, duration?: number): { time: number; note: string } {
   if (post.type === 'video') {
-    return 60
+    // 视频：使用提供的视频时长，或默认60秒
+    const videoDuration = duration || 60
+    const estimatedTime = Math.round(videoDuration * 1.1)
+    return {
+      time: estimatedTime,
+      note: '计算结果是根据原视频时长×1.1得出，考虑了用户倍速观看的习惯'
+    }
   } else {
-    const textTime = (post.title?.length || 20) * 0.1 + 30
-    const imageTime = 20
-    return Math.round(textTime + imageTime)
+    // 图文：按每分钟250字计算
+    const wordCount = content?.length || post.title?.length || 20
+    const estimatedTime = Math.ceil(wordCount / 250 * 60)
+    return {
+      time: estimatedTime,
+      note: '计算结果是根据帖子字数÷250字/分钟得出'
+    }
   }
 }
 
-export default function AttentionAnalysis({ post, isOwnPost }: AttentionAnalysisProps) {
+export default function AttentionAnalysis({ post, isOwnPost, content, duration }: AttentionAnalysisProps) {
   if (!isOwnPost) {
     return (
       <div className="bg-gray-50 rounded-xl border border-gray-200 p-5">
@@ -36,7 +50,7 @@ export default function AttentionAnalysis({ post, isOwnPost }: AttentionAnalysis
     )
   }
 
-  const estimatedReadTime = estimateReadingTime(post)
+  const { time: estimatedReadTime, note: estimationNote } = estimateReadingTime(post, content, duration)
   const avgWatchTime = post.avgWatchTime || 0
   const watchTimeRatio = avgWatchTime / estimatedReadTime
 
@@ -142,7 +156,7 @@ export default function AttentionAnalysis({ post, isOwnPost }: AttentionAnalysis
       <div className="mt-4 bg-blue-50 rounded-lg p-3 border border-blue-100">
         <h5 className="text-xs font-semibold text-blue-900 mb-2">📊 分析说明</h5>
         <ul className="text-xs text-blue-700 space-y-1">
-          <li>• 预估阅读时长：基于帖子类型（图文/视频）估算的完整浏览所需时间</li>
+          <li>• 预估阅读时长：{estimationNote}</li>
           <li>• 人均观看时长：用户实际停留在帖子的平均时间（从数据文件获取）</li>
           <li>• 数据来源：需从创作者中心导出包含"人均观看时长"的数据文件</li>
         </ul>
