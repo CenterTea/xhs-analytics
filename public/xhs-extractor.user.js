@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小红书帖子数据提取器
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.8
 // @description  提取小红书帖子数据并发送到数据分析工具
 // @author       You
 // @match        https://www.xiaohongshu.com/*
@@ -686,72 +686,45 @@
                 const author = link.textContent.trim().split(/\s+/)[0];
                 if (!author || author.length < 1 || author.length > 50) return;
 
-                // 判断是否是元数据文本
-                const isMetadata = (text) => {
-                    if (!text) return true;
-                    if (/^\d+$/.test(text)) return true;
-                    if (/^\d{4}[\-\/年]/.test(text)) return true;
-                    if (/IP属地|编辑于/.test(text)) return true;
-                    if (/^\d+赞?$/.test(text)) return true;
-                    if (/^回复\s*$/.test(text)) return true;
-                    if (/展开.+回复|查看更多/.test(text)) return true;
-                    if (text.length > 2000) return true;
-                    return false;
-                };
-
-                // 向上查找评论行容器（包含作者+内容+元数据的行，不包含嵌套回复）
-                let row = link.parentElement;
-                for (let i = 0; i < 4; i++) {
-                    if (!row) break;
-                    const children = row.children;
-                    // 找一个有多个子元素但不是过大的容器
-                    if (children.length >= 2 && children.length <= 20 && row.textContent.length < 3000) {
+                // 向上走几层，找到包含这条评论所有信息的块级容器
+                let block = link;
+                for (let i = 0; i < 6; i++) {
+                    if (!block.parentElement) break;
+                    block = block.parentElement;
+                    // 容器应该有一定内容量，但不要太大（太大可能包含多条评论）
+                    const t = block.textContent || '';
+                    if (t.length > 20 && t.length < 5000 && block.querySelectorAll('a[href*="/user/"]').length <= 3) {
                         break;
                     }
-                    row = row.parentElement;
-                }
-                if (!row) return;
-
-                // 在此行内查找评论内容：遍历直接子元素，找到最长且不是元数据的文本
-                let bestContent = '';
-                const directChildren = row.children;
-                const candidates = [];
-
-                for (const child of directChildren) {
-                    // 跳过包含用户链接的（可能是嵌套回复）
-                    if (child.querySelector('a[href*="/user/"]')) continue;
-                    const text = child.textContent.trim();
-                    if (text.length >= 2 && text.length <= 2000 && !isMetadata(text) && text !== author) {
-                        candidates.push({ text, len: text.length });
-                    }
                 }
 
-                // 如果有候选，选最长的一个
-                if (candidates.length > 0) {
-                    candidates.sort((a, b) => b.len - a.len);
-                    bestContent = candidates[0].text;
-                }
+                const blockText = block.textContent || '';
 
-                // 备选：从 row 下所有 span 中找最长的有效文本
-                if (!bestContent) {
-                    const rowSpans = row.querySelectorAll(':scope > * span, :scope > span');
-                    for (const span of rowSpans) {
-                        if (span.querySelector('a[href*="/user/"]')) continue;
-                        const text = span.textContent.trim();
-                        if (text.length >= 2 && text.length <= 2000 && !isMetadata(text) && text !== author) {
-                            if (text.length > (bestContent ? bestContent.length : 0)) {
-                                bestContent = text;
-                            }
-                        }
-                    }
-                }
+                // 从容器文本中提取评论内容：
+                // 去除作者名、时间、IP、点赞数、回复按钮、展开按钮等
+                let content = blockText;
 
-                // 清理内容中残留的 @username 引用
-                let content = bestContent.replace(/@\S+/g, '').trim();
-                // 清理 IP 地址格式
-                content = content.replace(/IP[：:]\S+/g, '').trim();
+                // 去掉作者名
+                content = content.replace(author, '');
 
-                if (!content || content.length < 2) return;
+                // 去掉各种元数据模式
+                content = content
+                    .replace(/\d{4}[-\/年]\d{1,2}[-\/月]\d{1,2}[\s\d:]*/g, ' ')
+                    .replace(/IP属地[：:]\s*\S+/g, ' ')
+                    .replace(/编辑于\s*\S+/g, ' ')
+                    .replace(/\d+赞/g, ' ')
+                    .replace(/^\d+\s*$/gm, ' ')
+                    .replace(/^回复\s*$/gm, ' ')
+                    .replace(/展开\d+条回复/g, ' ')
+                    .replace(/查看更多回复/g, ' ')
+                    .replace(/@\S+/g, ' ');
+
+                // 清理多余空白
+                content = content.replace(/\s+/g, ' ').trim();
+
+                // 过滤
+                if (content.length < 2) return;
+                if (content.length > 2000) return;
                 if (/^\d+$/.test(content)) return;
 
                 // 去重
@@ -759,16 +732,25 @@
                 if (processed.has(key)) return;
                 processed.add(key);
 
-                // 提取点赞数（在 row 及其父级找）
+                // 提取点赞数
                 let likes = 0;
-                const parent = row.parentElement || row;
-                const allSpans = parent.querySelectorAll('span');
-                for (const span of allSpans) {
+                const spans = block.querySelectorAll('span');
+                for (const span of spans) {
                     const t = span.textContent.trim();
                     const m = t.match(/^(\d+)赞?$/);
                     if (m) {
                         const n = parseInt(m[1]);
                         if (n > 0 && n < 100000) { likes = n; break; }
+                    }
+                }
+                // 备选：从 aria-label 获取
+                if (likes === 0) {
+                    for (const span of spans) {
+                        const al = span.getAttribute('aria-label');
+                        if (al && al.includes('赞')) {
+                            const m = al.match(/(\d+)/);
+                            if (m) { likes = parseInt(m[1]); break; }
+                        }
                     }
                 }
 
