@@ -9,6 +9,7 @@ import FunnelLayer from '../components/Funnel/FunnelLayer'
 import InteractionAnalysis from '../components/Funnel/InteractionAnalysis'
 import { Link } from 'react-router-dom'
 import { getBenchmark } from '../utils/benchmark'
+import { getContentClassification } from '../utils/account-analyzer'
 import type { Post } from '../types'
 
 // 计算总量数据的百分位（基于平均单帖数据推算）
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   }
 
   const diagnosis = selectedPost ? getDiagnosis?.(selectedPost) : null
+  const classification = getContentClassification(posts)
 
   const avgImpressions = Math.round(posts.reduce((s, p) => s + p.impressions, 0) / n)
   const avgViews = Math.round(posts.reduce((s, p) => s + p.views, 0) / n)
@@ -195,6 +197,48 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* 内容类型自动分析 */}
+      {classification.categories.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">内容类型分布</h2>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+              classification.verticalityScore >= 70 ? 'bg-green-100 text-green-700' :
+              classification.verticalityScore >= 45 ? 'bg-yellow-100 text-yellow-700' :
+              'bg-red-100 text-red-700'
+            }`}>
+              垂直度 {classification.verticalityScore}分 · {classification.mainDirection}
+            </span>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">基于 {posts.length} 条帖子标题自动分类（无需手动操作）</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              {classification.categories.slice(0, 6).map((cat, idx) => (
+                <div key={cat.name} className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400 w-6 text-right">{idx + 1}</span>
+                  <span className="text-sm text-gray-700 w-20 truncate">{cat.name}</span>
+                  <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${idx === 0 ? 'bg-red-400' : idx === 1 ? 'bg-orange-400' : 'bg-gray-300'}`}
+                      style={{ width: `${Math.max(cat.percentage, 2)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500 w-14 text-right">{cat.count}篇 ({cat.percentage.toFixed(0)}%)</span>
+                </div>
+              ))}
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+              <p className="text-xs text-gray-400 mb-2">分析结论</p>
+              <p className="text-sm text-gray-700 leading-relaxed mb-3">{classification.assessment}</p>
+              <div className="border-t border-gray-200 pt-3">
+                <p className="text-xs text-red-500 font-medium">建议</p>
+                <p className="text-xs text-gray-600 mt-1 leading-relaxed">{classification.suggestion}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 趋势图 */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">

@@ -1,4 +1,5 @@
 import type { Post, AccountStats, AccountAnalysis } from '../types'
+import { classifyContent } from './content-classifier'
 
 export function analyzeAccount(
   posts: Post[],
@@ -29,13 +30,39 @@ export function analyzeAccount(
   }
 }
 
+// 导出供 Dashboard 使用
+export function getContentClassification(posts: Post[]) {
+  const titles = posts.map(p => p.title).filter(Boolean)
+  return classifyContent(titles)
+}
+
 function analyzeContentVerticality(posts: Post[]) {
+  // 优先使用标签，否则从标题自动提取
   const topicCount: Record<string, number> = {}
   posts.forEach((post) => {
     post.topics?.forEach((topic) => {
       topicCount[topic] = (topicCount[topic] || 0) + 1
     })
   })
+
+  // 如果没有标签数据，用标题自动分类
+  if (Object.keys(topicCount).length === 0) {
+    const titles = posts.map(p => p.title).filter(Boolean)
+    const classification = classifyContent(titles)
+    const mainTopics = classification.categories.slice(0, 8).map(c => ({
+      topic: c.name,
+      weight: c.percentage / 100,
+    }))
+
+    const score = classification.verticalityScore
+
+    return {
+      score,
+      mainTopics,
+      assessment: classification.assessment,
+      suggestion: classification.suggestion,
+    }
+  }
 
   const sorted = Object.entries(topicCount)
     .sort((a, b) => b[1] - a[1])
