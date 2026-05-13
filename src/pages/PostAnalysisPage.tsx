@@ -197,11 +197,16 @@ export default function PostAnalysisPage() {
         const posts: Post[] = []
 
         console.log('Excel列名:', headers)
+        console.log('第一行数据样例:', jsonData[1])
 
         // 查找需要的列索引 - 优先精确匹配"笔记标题"
         const titleIndex = headers.findIndex((h: string) => h === '笔记标题') !== -1
           ? headers.findIndex((h: string) => h === '笔记标题')
           : headers.findIndex((h: string) => h.includes('标题'))
+
+        // 如果没找到标题列，尝试其他常见列名
+        const finalTitleIndex = titleIndex !== -1 ? titleIndex :
+          headers.findIndex((h: string) => h.includes('笔记') || h.includes('内容') || h.includes('主题'))
 
         const impressionsIndex = headers.findIndex((h: string) => h.includes('曝光'))
         const viewsIndex = headers.findIndex((h: string) => h.includes('阅读') || h.includes('播放'))
@@ -212,11 +217,17 @@ export default function PostAnalysisPage() {
         const newFollowersIndex = headers.findIndex((h: string) => h.includes('粉丝'))
         const avgWatchTimeIndex = headers.findIndex((h: string) => h.includes('观看时长'))
 
-        console.log('找到的列索引:', { titleIndex, impressionsIndex, viewsIndex, likesIndex, savesIndex, commentsIndex, sharesIndex, newFollowersIndex, avgWatchTimeIndex })
+        console.log('找到的列索引:', { finalTitleIndex, impressionsIndex, viewsIndex, likesIndex, savesIndex, commentsIndex, sharesIndex, newFollowersIndex, avgWatchTimeIndex })
+
+        // 检查是否找到标题列
+        if (finalTitleIndex === -1) {
+          alert(`未找到标题列。请确保Excel文件包含"笔记标题"列。\n实际找到的列名：${headers.join(', ')}`)
+          return
+        }
 
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i]
-          if (!row[titleIndex]) continue
+          if (!row[finalTitleIndex]) continue
 
           const getNum = (idx: number) => {
             if (idx === -1) return 0
@@ -240,7 +251,7 @@ export default function PostAnalysisPage() {
 
           const post: Post = {
             id: `post-${i}`,
-            title: row[titleIndex]?.toString() || '',
+            title: row[finalTitleIndex]?.toString() || '',
             type: 'image',
             publishDate: '',
             topics: [],
