@@ -215,7 +215,10 @@ export default function PostAnalysisPage() {
         const commentsIndex = headers.findIndex((h: string) => h.includes('评论'))
         const sharesIndex = headers.findIndex((h: string) => h.includes('分享'))
         const newFollowersIndex = headers.findIndex((h: string) => h.includes('粉丝'))
-        const avgWatchTimeIndex = headers.findIndex((h: string) => h.includes('观看时长'))
+        // 查找观看时长列 - 尝试多种可能的列名
+        const avgWatchTimeIndex = headers.findIndex((h: string) => h === '人均观看时长') !== -1
+          ? headers.findIndex((h: string) => h === '人均观看时长')
+          : headers.findIndex((h: string) => h.includes('观看时长') || h.includes('平均观看') || h.includes('观看时间'))
 
         console.log('找到的列索引:', { finalTitleIndex, impressionsIndex, viewsIndex, likesIndex, savesIndex, commentsIndex, sharesIndex, newFollowersIndex, avgWatchTimeIndex })
 
