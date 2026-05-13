@@ -620,35 +620,6 @@ export default function PostAnalysisPage() {
       {/* 分析结果 */}
       {result && (
         <div className="space-y-6">
-          {/* 内容分析 */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">📄 内容分析</h2>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">{result.content.estimatedReadTime}分钟</p>
-                <p className="text-xs text-gray-500">预估阅读时间</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">{result.content.wordCount}字</p>
-                <p className="text-xs text-gray-500">文字数量</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">
-                  {result.content.infoDensity === 'low' ? '低' : result.content.infoDensity === 'medium' ? '中' : '高'}
-                </p>
-                <p className="text-xs text-gray-500">信息密度</p>
-              </div>
-            </div>
-            <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
-              <h4 className="font-medium text-amber-900 mb-2">💡 优化建议</h4>
-              <ul className="text-sm text-amber-800 space-y-1">
-                {result.content.suggestions.map((s, i) => (
-                  <li key={i}>• {s}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
           {/* 评论词云 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">☁️ 评论关键词</h2>
