@@ -41,7 +41,7 @@ export default function InteractionAnalysis({ post }: InteractionAnalysisProps) 
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-gray-900">互动深度分析</h3>
         {isControversial && (
-          <Badge variant="poor">⚠️ 争议性内容</Badge>
+          <Badge variant="poor">⚠️ 需关注</Badge>
         )}
         {isHelpSeeking && !isControversial && (
           <Badge variant="great">💬 高互动求助帖</Badge>
@@ -181,9 +181,9 @@ export default function InteractionAnalysis({ post }: InteractionAnalysisProps) 
                 ratioSuggestion = '检测到求助帖/讨论帖特征：评论活跃度高，用户积极参与讨论。这是健康的高互动现象！建议积极回复评论，与粉丝建立深度连接。如果想进一步提高转化率，可以打造相关领域的人设并展示个人语言魅力。'
                 ratioColor = 'text-purple-600'
               } else {
-                // 争议性内容
-                ratioSuggestion = '评论数相对较多，可能存在争议或引战内容。争议性内容短期能吸引注意力，但不利于长期粉丝积累和账号调性。建议回归有价值的内容创作，避免故意制造对立。'
-                ratioColor = 'text-red-600'
+                // 争议性内容或求助帖
+                ratioSuggestion = '评论数相对较多，可能存在争议或引战内容，也有可能是求助帖或话题讨论帖。建议先审视评论区内容：如果是有价值的讨论则积极回复互动，打造人设展示语言魅力；如果是对立争吵则需回归有价值的内容创作，避免故意制造对立。'
+                ratioColor = 'text-orange-600'
               }
             } else {
               ratioSuggestion = '评论数较少，可能是内容缺乏讨论点。尝试在结尾抛出开放性问题，引导用户在评论区分享观点。'
@@ -213,7 +213,7 @@ export default function InteractionAnalysis({ post }: InteractionAnalysisProps) 
                       : likeCommentRatio < healthyMin
                         ? isHelpSeeking && !isControversial
                           ? 'bg-purple-500'
-                          : 'bg-red-500'
+                          : 'bg-orange-500'
                         : 'bg-yellow-500'
                   }`}
                   style={{ width: `${Math.min(Math.max((likeCommentRatio / 25) * 100, 5), 100)}%` }}
@@ -233,15 +233,26 @@ export default function InteractionAnalysis({ post }: InteractionAnalysisProps) 
 
       {/* 争议性内容或求助帖警告 */}
       {isControversial && (
-        <div className="mt-4 p-4 bg-red-100 border border-red-200 rounded-lg">
-          <h5 className="text-sm font-semibold text-red-800 mb-2">⚠️ 检测到争议性内容特征</h5>
-          <p className="text-sm text-red-700 mb-2">
+        <div className="mt-4 p-4 bg-orange-100 border border-orange-200 rounded-lg">
+          <h5 className="text-sm font-semibold text-orange-800 mb-2">⚠️ 检测到评论转化率异常高</h5>
+          <p className="text-sm text-orange-700 mb-2">
             评论转化率异常高（{commentConversionRate.toFixed(2)}%），但点赞转化率偏低（{likeConversionRate.toFixed(1)}%）。
           </p>
-          <p className="text-xs text-red-600">
-            这种情况通常出现在争议性话题、引战内容或" bait "（钓鱼）帖子中。虽然能引发讨论，但不利于长期账号发展和粉丝信任建立。
-            建议：避免故意制造争议，专注提供有价值的内容。
-          </p>
+          <div className="space-y-3">
+            <div className="bg-white rounded p-2 border border-orange-200">
+              <p className="text-xs font-medium text-red-700 mb-1">情况一：争议性内容</p>
+              <p className="text-xs text-red-600">
+                这种情况通常出现在争议性话题、引战内容或"bait"（钓鱼）帖子中。虽然能引发讨论，但不利于长期账号发展和粉丝信任建立。
+                建议：避免故意制造争议，专注提供有价值的内容。
+              </p>
+            </div>
+            <div className="bg-white rounded p-2 border border-orange-200">
+              <p className="text-xs font-medium text-purple-700 mb-1">情况二：求助帖 / 讨论帖</p>
+              <p className="text-xs text-purple-600">
+                也有可能是求助帖或话题讨论帖，用户在看到内容后想要表达观点或提供帮助。这类帖子能引发大量有价值的讨论，是积极的高互动现象。建议积极回复评论区，与粉丝建立深度连接。如果想进一步提高互动转化率，可以打造相关领域的人设并展示个人语言魅力。
+              </p>
+            </div>
+          </div>
         </div>
       )}
       {isHelpSeeking && !isControversial && (
