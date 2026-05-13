@@ -41,6 +41,8 @@ interface ExtractedData {
   comments: number
   shares: number
   postTime: string
+  postType?: 'video' | 'image'
+  videoDuration?: number
   url: string
   commentList?: { author: string; content: string; likes: number }[]
 }
@@ -933,7 +935,7 @@ export default function PostAnalysisPage() {
                         </div>
                       </div>
                     </div>
-                    <AttentionAnalysis post={matchedPost} isOwnPost={true} content={extractedData?.content} />
+                    <AttentionAnalysis post={matchedPost} isOwnPost={true} content={extractedData?.content} duration={extractedData?.videoDuration} />
                   </>
                 ) : (
                   <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
@@ -1036,7 +1038,7 @@ export default function PostAnalysisPage() {
                         </div>
                       </div>
                     </div>
-                    <AttentionAnalysis post={matchedPost} isOwnPost={true} content={extractedData?.content} />
+                    <AttentionAnalysis post={matchedPost} isOwnPost={true} content={extractedData?.content} duration={extractedData?.videoDuration} />
                   </>
                 ) : (
                   <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
