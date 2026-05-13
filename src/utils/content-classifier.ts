@@ -76,8 +76,8 @@ function classifyTitle(title: string): string | null {
   // 返回得分最高的分类
   if (Object.keys(scores).length === 0) return null
   const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0]
-  // 阈值：至少需要一定分数才算匹配
-  if (best[1] < 1.5) return null
+  // 阈值：降到 0，只要能匹配就归类
+  if (best[1] < 0) return null
   return best[0]
 }
 
@@ -94,7 +94,6 @@ export function classifyContent(titles: string[]): ContentClassification {
 
   // 对每条标题进行分类
   const categoryCount: Record<string, { count: number; samples: string[] }> = {}
-  let unclassified = 0
 
   for (const title of titles) {
     const cat = classifyTitle(title)
@@ -104,16 +103,22 @@ export function classifyContent(titles: string[]): ContentClassification {
       if (categoryCount[cat].samples.length < 3) {
         categoryCount[cat].samples.push(title)
       }
-    } else {
-      unclassified++
     }
   }
 
-  // 如果有太多未分类的，尝试动态发现话题
-  if (unclassified > titles.length * 0.5) {
-    // 用高频词作为自定义分类
-    const unclassifiedTitles = titles.filter(t => !classifyTitle(t))
-    dynamicTopicDiscovery(unclassifiedTitles, categoryCount)
+  // 总是运行动态话题发现，补充分类
+  dynamicTopicDiscovery(titles, categoryCount)
+
+  // 将所有未归入已有分类的标题，归入"其他话题"
+  let classifiedCount = Object.values(categoryCount).reduce((s, c) => s + c.count, 0)
+  if (classifiedCount < titles.length) {
+    const unclassifiedTitles = titles.filter(t => !classifyTitle(t) && !isTitleInCategories(t, categoryCount))
+    if (unclassifiedTitles.length > 0) {
+      categoryCount['其他话题'] = {
+        count: unclassifiedTitles.length,
+        samples: unclassifiedTitles.slice(0, 3),
+      }
+    }
   }
 
   // 排序并计算百分比
@@ -136,7 +141,13 @@ export function classifyContent(titles: string[]): ContentClassification {
   let mainDirection: string
   let suggestion: string
 
-  if (topPct > 60) {
+  if (categories.length === 1 && categories[0].name.includes('其他')) {
+    // 全部无法分类的情况
+    verticalityScore = 40
+    assessment = `你的帖子标题风格比较个性化，系统暂时无法自动归类到具体领域。如果你觉得分类不对，可能是标题中没有包含领域关键词。`
+    mainDirection = '个性化内容创作者'
+    suggestion = `建议：在标题中适当加入领域关键词（如"穿搭""美食""旅行"等），不仅有助于系统理解你的内容，也能让搜索引擎更好地推荐你的帖子。或者在帖子中加上话题标签 #。`
+  } else if (topPct > 60) {
     verticalityScore = Math.min(100, Math.round(85 + (topPct - 60) * 0.3))
     assessment = `内容高度垂直——${Math.round(topPct)}% 的帖子集中在「${categories[0].name}」领域。账号定位非常清晰，推荐算法能够精准锁定目标受众。`
     mainDirection = `专注「${categories[0].name}」的垂直账号`
@@ -167,13 +178,22 @@ export function classifyContent(titles: string[]): ContentClassification {
   }
 }
 
+function isTitleInCategories(
+  title: string,
+  categoryCount: Record<string, { count: number; samples: string[] }>
+): boolean {
+  for (const cat of Object.values(categoryCount)) {
+    if (cat.samples.includes(title)) return true
+  }
+  return false
+}
+
 function dynamicTopicDiscovery(
   titles: string[],
   categoryCount: Record<string, { count: number; samples: string[] }>
 ) {
-  // 提取所有标题的高频2-3字词
   const wordFreq: Record<string, number> = {}
-  const stopWords = new Set(['小红书', '分享', '推荐', '合集', '日常', '记录', '生活', '真的', '感觉', '一个', '这个', '那个', '今天', '终于', '还是', '怎么', '什么', '视频', '图文', '攻略', '必备', '超全', '整理', '必备'])
+  const stopWords = new Set(['小红书', '分享', '推荐', '合集', '日常', '记录', '生活', '真的', '感觉', '一个', '这个', '那个', '今天', '终于', '还是', '怎么', '什么', '视频', '图文', '攻略', '必备', '超全', '整理', '必备', '免费', '终于', '教程', '干货', '笔记', '好物', '宝藏', '近期', '喜欢', '最近', '会有', '拍照', '哈哈哈', '一下', '啊啊', '发现', '超爱', '绝了', '直接', '看看', '好好'])
 
   for (const title of titles) {
     const words = extractKeywords(title)
@@ -186,17 +206,20 @@ function dynamicTopicDiscovery(
     }
   }
 
-  // 取高频词作为动态分类
+  // 取高频词作为动态分类（降低阈值到 ≥2 次）
   const sorted = Object.entries(wordFreq)
-    .filter(([_, c]) => c >= 3)
+    .filter(([_, c]) => c >= 2)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
 
   for (const [word, count] of sorted) {
     const name = `「${word}」相关`
-    categoryCount[name] = {
-      count,
-      samples: titles.filter(t => t.includes(word)).slice(0, 3),
+    // 避免与已有分类重复
+    if (!categoryCount[name]) {
+      categoryCount[name] = {
+        count,
+        samples: titles.filter(t => t.includes(word)).slice(0, 3),
+      }
     }
   }
 }
