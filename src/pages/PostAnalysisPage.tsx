@@ -215,13 +215,20 @@ export default function PostAnalysisPage() {
         const commentsIndex = headers.findIndex((h: string) => h.includes('评论'))
         const sharesIndex = headers.findIndex((h: string) => h.includes('分享'))
         const newFollowersIndex = headers.findIndex((h: string) => h.includes('粉丝'))
-        // 查找观看时长列 - 尝试多种可能的列名
-        const avgWatchTimeIndex = headers.findIndex((h: string) => h === '人均观看时长') !== -1
-          ? headers.findIndex((h: string) => h === '人均观看时长')
-          : headers.findIndex((h: string) => h.includes('观看时长') || h.includes('平均观看') || h.includes('观看时间'))
+        // 查找观看时长列 - 直接精确匹配"人均观看时长"
+        const avgWatchTimeIndex = headers.findIndex((h: string) => {
+          const trimmed = h.trim()
+          return trimmed === '人均观看时长' || trimmed.includes('观看时长')
+        })
 
         console.log('找到的列索引:', { finalTitleIndex, impressionsIndex, viewsIndex, likesIndex, savesIndex, commentsIndex, sharesIndex, newFollowersIndex, avgWatchTimeIndex })
         console.log('人均观看时长列名:', headers[avgWatchTimeIndex], '索引:', avgWatchTimeIndex)
+
+        // 打印所有列名帮助调试
+        console.log('所有列名:')
+        headers.forEach((h: string, i: number) => {
+          console.log(`  [${i}] "${h}"`)
+        })
 
         // 检查是否找到标题列
         if (finalTitleIndex === -1) {
@@ -238,7 +245,9 @@ export default function PostAnalysisPage() {
             const val = row[idx]
             if (typeof val === 'number') return val
             if (typeof val === 'string') {
-              const parsed = parseFloat(val.replace(/,/g, ''))
+              // 处理千分位逗号、去除多余空格
+              const cleaned = val.replace(/,/g, '').trim()
+              const parsed = parseFloat(cleaned)
               return isNaN(parsed) ? 0 : parsed
             }
             return 0
